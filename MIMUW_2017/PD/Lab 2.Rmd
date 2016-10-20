@@ -1,0 +1,53 @@
+---
+title: "Gra"
+author: "Aleksandra Dąbrowska"
+date: "Thursday, October 20, 2016"
+output: html_document
+---
+
+
+```{r}
+library(proton)
+library(dplyr)
+
+proton()
+head(employees)
+
+Insecure <- employees[employees$surname=="Insecure",]
+
+proton(action="login", login="johnins")
+
+head(top1000passwords)
+
+for (i in 1:1000){
+  proton(action="login", login="johnins", password=top1000passwords[i])
+    }
+  
+
+Pietraszko <- employees[employees$surname=="Pietraszko",]
+
+proton(action="server", login="slap")
+
+head(logs)
+
+
+log <- filter(logs, login=="slap")
+
+ilosc <- group_by(log, host)
+
+ilosc %>% 
+      summarise(logowania=n())
+
+
+proton(action="server", host="194.29.178.16")
+
+
+history <- as.data.frame(bash_history)
+head(history)
+
+
+
+
+
+```
+
