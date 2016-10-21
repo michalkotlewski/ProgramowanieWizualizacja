@@ -9,7 +9,7 @@ die1 = c("rabbit", "rabbit", "rabbit", "rabbit", "rabbit", "rabbit", "sheep", "s
 die2 = c("rabbit", "rabbit", "rabbit", "rabbit", "rabbit", "rabbit", "sheep", "sheep", "pig", "pig", "horse", "fox")
 to.big.animal = list()
 to.small.animals = list()
-
+data = data.frame(matrix(NA, nrow = 1e6, ncol = 15))
 
 #możliwe wymiany na pojedyncze większe zwierze
 prices.sorted = c(72, 36, 36, 12, 6, 6, 1)
@@ -64,6 +64,18 @@ moves.generation = function(stock.status){
 }
 
 
+#sposób wybrania ruchu
+choose.move = function(way, possible.moves){
+  if(way == "random"){ 
+    number.moves = nrow(possible.moves)
+    move = possible.moves[sample(1:number.moves, 1), ]
+    return(move)
+  } else if(way == "randomforest") {
+    return(0)
+    #tutaj random forest!
+  }
+}
+
 
 #powiekszanie stada po rzucie
 reproduction = function(die1.result, die2.result, stock.status){
@@ -71,6 +83,7 @@ reproduction = function(die1.result, die2.result, stock.status){
     stock.status[[die1.result]] = min(floor(stock.status[[die1.result]] + (stock.status[[die1.result]]+2)/2), max.stock[[die1.result]])
   } else if(die1.result == "wolf" && die2.result == "fox"){
     if(stock.status[["bdog"]] == 0){
+      stock.status[["rabbit"]] = 0
       stock.status[["sheep"]] = 0
       stock.status[["pig"]] = 0
       stock.status[["cow"]] = 0
@@ -84,6 +97,7 @@ reproduction = function(die1.result, die2.result, stock.status){
     }
   } else if(die1.result == "wolf"){
     if(stock.status[["bdog"]] == 0){
+      stock.status[["rabbit"]] = 0
       stock.status[["sheep"]] = 0
       stock.status[["pig"]] = 0
       stock.status[["cow"]] = 0
@@ -106,8 +120,6 @@ reproduction = function(die1.result, die2.result, stock.status){
   return(stock.status)
 }
 
-
-
 #zmiana stanu stada
 change = function(move, stock.status){
   stock.status + move
@@ -119,23 +131,47 @@ win = function(stock.status){
 }
 
 #pojedyncza gra
-play = function(){
+play = function(nrows){
   turns = 0
+  way = "random"
   while(!win(stock.status)){
+    turns = turns + 1
+    nrows = nrows +1
+    if(nrows == 1e6){
+      turns.to.end = turns:1
+      data[(nrows-turns+1):nrows, 15] <<- turns.to.end
+      return(nrows)
+    }
     possible.moves = moves.generation(stock.status)
     if(!is.null(dim(possible.moves)) && dim(possible.moves)[1] > 0){
-      number.moves = nrow(possible.moves)
-      move = possible.moves[sample(1:number.moves, 1), ]
+      move = choose.move(way, possible.moves)
+      data[nrows, 1:14] <<- c(stock.status, move)
       stock.status = change(move, stock.status)
     }
     if(win(stock.status)){
-      return(turns)
+      turns.to.end = turns:1
+      #cat(length((nrows-turns):nrows), length(turns.to.end), "\n")
+      data[(nrows-turns +1):nrows, 15] <<- turns.to.end
+      return(nrows)
     }
     die1.result = sample(die1, 1)
     die2.result = sample(die2, 1)
     stock.status = reproduction(die1.result, die2.result, stock.status)
-    turns = turns + 1
-    cat(turns, stock.status, '\n')
+    #cat(turns, stock.status, '\n')
   }
-  return(turns)
+  turns.to.end = turns:1      
+  #cat(length((nrows-turns):nrows), length(turns.to.end), "\n")
+  data[(nrows-turns +1):nrows, 15] <<- turns.to.end
+  return(nrows)
 }
+
+
+#generowanie danychdo uczenia
+generate.data = function(){
+  nrows = 0
+  for(i in 1:20000){
+    nrows = play(nrows)
+    cat(nrows)
+  }
+}
+  
