@@ -1,0 +1,315 @@
+---
+title: "Hodowla zwierz¹tek"
+author: "Domink Ambroziak, Anna Dymowska, Adam Król"
+date: "26 paŸdziernika 2016"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Za³o¿enia strategii
+
+####1. Gdy tylko jesteœmy w stanie wymieniæ tañsze zwierzêta na dro¿sze - wymieniamy. 
+
+####2. W drug¹ stronê wyminiamy tylko wtedy, gdy jest to ruch koñcz¹cy grê.
+
+####3. Du¿ego psa kupujemy przed krow¹.
+
+####4. Nie kupujemy ma³ych psów, poniewa¿ nadmiar królików zazwyczaj jest wymieniany na dro¿sze zwierze.
+
+
+
+
+# Kod
+
+
+
+
+```{r cars}
+
+zwierzeta<-data.frame(krolik=c(0,1,60),owca=c(0,6,24),swinia=c(0,12,20),krowa=c(0,36,12),duzy.pies=c(0,36,2),kon=c(0,72,6),maly.pies=c(0,6,4),row.names=c("liczba","krolikowartosc","wstadzie"))
+
+```
+W ramce danych "zwierzeta" przechowujemy informacje o iloœci posiadanych przez nas zwierz¹t, ich wartoœci (w królikach) i liczbie zwierz¹t pozosta³ych w stadzie.
+```{r zwierzeta, echo=FALSE}
+zwierzeta
+
+```
+
+###Symulacja rzutu kostkami
+
+Dla ka¿dego rzutu definiujemy wektor w którym zapisujemy wskazane przez koœci zwierzêta.
+
+```{r symulacja}
+
+nakostkach<-c(0,0,0,0,0,0,0,0,0)
+names(nakostkach)<-c("krolik","owca","swinia","krowa","duzy.p","kon","maly.p","wilk","lis")
+
+zielona.kostka<-sample(1:9, 1, prob=c(0.5 , 0.25, 1/12 , 1/12, 0, 0,0, 1/12,0))
+czerwona.kostka<-sample(1:9, 1, prob=c(0.5 , 1/6, 1/6 , 0, 0, 1/12, 0,0, 1/12))
+
+nakostkach[zielona.kostka]=nakostkach[zielona.kostka]+1
+nakostkach[czerwona.kostka]=nakostkach[czerwona.kostka]+1
+```
+
+```{r nak, echo=FALSE}
+nakostkach
+```
+
+###Dodawanie nowych zwierz¹t
+Dodajemy zwierzêta wyrzucone na kostkach, je¿eli tworz¹ pary.
+```{r dodawanie}
+for (i in c(1:4,6)){
+  
+  if( nakostkach[i] != 0){
+    
+    a <- min( zwierzeta[3,i]  , floor((zwierzeta[1,i]+nakostkach[i])/2) )
+    
+    zwierzeta[3,i]= zwierzeta[3,i] - a
+    zwierzeta[1,i]= zwierzeta[1,i] + a
+   
+  }
+  
+}
+```
+
+###Wylosowanie lisa
+Mamy ma³ego psa - wraca do stada. Nie mamy ma³ego psa - wszystkie króliki wracaj¹ do stada.
+```{r lis}
+if(nakostkach[9]==1){
+  if(zwierzeta[1,7] != 0){     
+    
+    zwierzeta[3,7]= zwierzeta[3,7]+1
+    zwierzeta[1,7]= zwierzeta[1,7]-1
+    
+  } else {
+    zwierzeta[3,1]= zwierzeta[1,1]+zwierzeta[3,1]
+    zwierzeta[1,1]=0
+    
+  }
+}
+
+```
+
+###Wylosowanie wilka
+
+Mamy du¿ego psa - wraca do stada. Nie mamy du¿ego psa - wszystkie zwierzêta poza koniem i ma³ym psem wracaj¹ do stada.
+```{r wilk}
+if(nakostkach[8]==1){
+  if(zwierzeta[1,5] != 0){
+    
+    zwierzeta[3,5]= zwierzeta[3,5]+1
+    zwierzeta[1,5]= zwierzeta[1,5]-1
+    
+  } else {
+    
+    for(j in 1:4){
+      zwierzeta[3,j]= zwierzeta[3,j]+zwierzeta[1,j]
+      zwierzeta[1,j]= 0
+    }
+    
+  }
+}
+```
+
+##Implementacja strategii - wymiana zwierz¹t
+
+###Na zwierzêta wy¿szego poziomu
+Sprawdzamy kolejno, przechodz¹c od konia do owcy, czy mamy dane zwierze. Jak nie, to sprawdzamy czy jesteœmy w stanie wymieniæ tañsze zwierzêta na dane zwierze.
+```{r wymiana}
+for (i in 6:2){
+  
+  if (zwierzeta[1,i]==0){         #sprawdzam, czy nie mam i-tego zwierzêcia
+           #sprawdzam, czy mogê kupiæ i-te zwierzê
+    if((sum(zwierzeta[1,1:(i-1)]*zwierzeta[2,1:(i-1)]))>=zwierzeta[2,i]){
+      zwierzeta[1,i]<-1
+      zwierzeta[3,i]<-zwierzeta[3,i]-1
+      dosplaty<-zwierzeta[2,i]
+      j<-(i-1)
+      while(dosplaty>0){
+        if (zwierzeta[1,j]>=1){              #sprzedajê zwierzêta kolejno od najwiêkszych
+          dosplaty<-(dosplaty-zwierzeta[2,j])
+          zwierzeta[1,j]<-zwierzeta[1,j]-1
+          zwierzeta[3,j]<-zwierzeta[3,j]+1
+        }
+        if (zwierzeta[1,j]==0){
+          j<-(j-1)
+        }
+      }
+      break
+    }
+  }
+}
+```
+
+###Na zwierzêta ni¿szego poziomu - koñcz¹ce grê
+
+Jeœli wartoœæ naszych zwierz¹t jest wystarczaj¹ca do zakoñczenia gry, a nie mamy np. owiec, wymieniamy jedno z dro¿szych zwierz¹t na tañsze.
+```{r wymiana2}
+for (i in 6:2){
+  if (zwierzeta[1,i]>1){ #sprzedawanie drugiego zwierzêcia
+    
+    if (prod(zwierzeta[1,i:6])>0){
+      zwierzeta[1,i]<-zwierzeta[1,i]-1
+      zwierzeta[3,i]<-zwierzeta[3,i]+1
+      for (j in (i-1):1){
+        zwierzeta[1,j]<-zwierzeta[1,j]+1
+        zwierzeta[3,j]<-zwierzeta[3,j]-1
+      }
+      
+    }
+  } 
+}
+```
+
+##Symulacje ca³ej gry
+
+Poprzednie etapy zebrane w pêtle.
+
+Sta³a "n" okreœla iloœæ rozgrywanych przez program gier. Dla ka¿dego "l" rozgrywana jest jedna gra, a liczba przeprowadzonych w niej tur jest zapisywana na l-tej wspó³rzêdnej wektora "czasy".
+
+Podczas dzia³ania pêtli "while" rozgrywana jest jedna gra.  
+
+```{r car}
+n<-10000                        #liczba symulacji
+czasy<-vector("integer",n)         #tu zapisywana jest d³ugoœæ ka¿dej gry
+
+for(l in 1:n){                     #powtarzaj symulacjê n razy
+
+  
+# definiowanie tabeli "zwierzeta"
+  
+zwierzeta<-data.frame(krolik=c(0,1,60),owca=c(0,6,24),swinia=c(0,12,20),krowa=c(0,36,12),duzy.pies=c(0,36,2),kon=c(0,72,6),maly.pies=c(0,6,4),row.names=c("liczba","krolikowarosc","wstadzie"))
+
+
+# rozpoczêcie gry, graj dopóki nie masz wszystkich wymaganych zwierz¹t
+
+while (prod(zwierzeta[1,c(-5,-7)])==0){
+
+czasy[l]<-czasy[l]+1                               #licznik rund
+
+
+
+#symulacja rzutu kostkami
+
+nakostkach<-c(0,0,0,0,0,0,0,0,0)     #ósme miejsce w wektorze - wilk, dziewi¹te - lis
+
+zielona.kostka<-sample(1:9, 1, prob=c(0.5 , 0.25, 1/12 , 1/12, 0, 0,0, 1/12,0))
+czerwona.kostka<-sample(1:9, 1, prob=c(0.5 , 1/6, 1/6 , 0, 0, 1/12, 0,0, 1/12))
+
+nakostkach[zielona.kostka]=nakostkach[zielona.kostka]+1
+nakostkach[czerwona.kostka]=nakostkach[czerwona.kostka]+1
+
+
+# dodawanie zwierz¹t
+
+for (i in c(1:4,6)){
+  
+  if( nakostkach[i] != 0){
+    
+    a <- min( zwierzeta[3,i]  , floor((zwierzeta[1,i]+nakostkach[i])/2) )
+    
+    zwierzeta[3,i]= zwierzeta[3,i] - a
+    zwierzeta[1,i]= zwierzeta[1,i] + a
+   
+  }
+}
+
+# przyjœcie lisa
+
+if(nakostkach[9]==1){
+  if(zwierzeta[1,7] != 0){
+    
+    zwierzeta[3,7]= zwierzeta[3,7]+1
+    zwierzeta[1,7]= zwierzeta[1,7]-1
+    
+  } else {
+    zwierzeta[3,1]= zwierzeta[1,1]+zwierzeta[3,1]
+    zwierzeta[1,1]=0
+    }
+}
+
+
+
+# przyjœcie wilka
+
+if(nakostkach[8]==1){
+  if(zwierzeta[1,5] != 0){
+    
+    zwierzeta[3,5]= zwierzeta[3,5]+1
+    zwierzeta[1,5]= zwierzeta[1,5]-1
+    
+  } else {
+    
+    for(j in 1:4){
+      zwierzeta[3,j]= zwierzeta[3,j]+zwierzeta[1,j]
+      zwierzeta[1,j]= 0
+    }
+    
+  }
+}
+
+
+# wymiana na tañsze zwierzêta - koñcz¹ca grê
+
+for (i in 6:2){
+  if (zwierzeta[1,i]>1){
+    
+    if (prod(zwierzeta[1,i:6])>0){
+      zwierzeta[1,i]<-zwierzeta[1,i]-1
+      zwierzeta[3,i]<-zwierzeta[3,i]+1
+      for (j in (i-1):1){
+        zwierzeta[1,j]<-zwierzeta[1,j]+1
+        zwierzeta[3,j]<-zwierzeta[3,j]-1
+      }
+      
+    }
+  } 
+}
+
+
+# wymiana na dro¿sze zwierzêta
+
+for (i in 6:2){
+  
+  if (zwierzeta[1,i]==0){         #sprawdzam, czy nie mam i-tego zwierzêcia
+    if((sum(zwierzeta[1,1:(i-1)]*zwierzeta[2,1:(i-1)]))>=zwierzeta[2,i]){
+      zwierzeta[1,i]<-1
+      zwierzeta[3,i]<-zwierzeta[3,i]-1
+      dosplaty<-zwierzeta[2,i]
+      j<-(i-1)
+      while(dosplaty>0){
+        if (zwierzeta[1,j]>=1){              #sprzedajê zwierzêta kolejno od najwiêkszych
+          dosplaty<-(dosplaty-zwierzeta[2,j])
+          zwierzeta[1,j]<-zwierzeta[1,j]-1
+          zwierzeta[3,j]<-zwierzeta[3,j]+1
+        }
+        if (zwierzeta[1,j]==0){
+          j<-(j-1)
+        }
+      }
+      break
+    }
+  }
+}
+}
+}
+
+
+barplot(as.matrix(zwierzeta)[1,],ylim=c(0,10),col="lightblue", main="Przyk³adowy stan posiadanych zwierz¹t na koniec gry")
+```
+
+##Rozk³ad czasu gry
+
+```{r rozklad}
+
+summary(czasy)
+sd(czasy)
+hist(czasy,breaks=(10*1:50),main="Rozk³ad czasu gry", col="lightgreen",xlab="Liczba tur",ylab=NULL)
+
+
+```
+
+
