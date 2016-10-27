@@ -51,4 +51,33 @@ W ramach tej fazy należy (zakładamy, że gra jeden gracz):
 Wynikiem pierwszej fazy jest opisana słownie oraz zaimplementowana strategia gry w SuperFarmera, wraz z wynikami symulacji długości gry jednego gracza stosującego ww. strategię.
 
 
+Kryteria oceny fazy 1:
+
+A. Działanie
+
+Dobre rozwiązanie powinno:
+		- dać się uruchomić na innym komputerze (moim),
+		- poprawnie implementować zasady gry w SuperFarmera,
+		- zliczać czas gry w liczbie losowań kostką,
+		- badać rozkład czasu gry przez powtórzenie symulacji 10000 razy.
+
+B. Modułowość kodu 
+
+Dobre rozwiązanie powinno:
+		- składać się z funkcji,
+		- nazwy funkcji powinny wyjaśniać co funkcje robią,
+		- funkcje powinny byc krótkie, max 1 ekran, idealnie 5-10 linii,
+		- funkcje związane ze strategią powinny być oddzielone od funkcji związanych z mechaniką gry,
+		- funkcje nie powinny korzystać z globalnych parametrów, powinny przyjmować argumenty których potrzebują i jako wynik zwracać nowy stan zmiennych.
+
+C. Elastyczność i czytelność rozwiązania
+
+Dobre rozwiązanie powinno:
+		- być parametryzowane, parametry powinny znajdować się na początku rozwiązania,
+		- zmienne powinny mieć czytelne nazwy,
+		- wartości tam gdzie można powinny być czytelne (nazywane elementy wektorów),
+		- kod powinien być czytelnie sformatowany, należy unikać długich cebulek,
+		- unikać kopiowania podobnych bloków instrukcji, które można zastąpić pętlą.
+
+ 
 
