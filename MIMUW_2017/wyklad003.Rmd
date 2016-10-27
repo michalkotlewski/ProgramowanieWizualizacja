@@ -9,12 +9,60 @@ output:
 
 # Argument ...
 
-```{}
+```{r}
+
+mojHist <- function(x, ...) {
+  hist(x, ...)
+}
+x <- rnorm(1000)
+mojHist(x, col="blue")
+
+mojHist2 <- function(x, ...) {
+  print(list(...))
+}
+mojHist2(x, col="blue", arg3="2")
+
+mojHist3 <- function(moje_dane =1, col="blue") {
+  hist(moje_dane, col=col)
+}
+mojHist3(c="black", moj=x)
+mojHist3("black", moj=x)
+
+iris$Spe <- 1:150
+iris$Spe[1]
+iris[1,"Spe"]
+`$`(iris, "Spe")
 ```
 
 # Klasy S3
 
 ```{r}
+summary(1:150)
+summary(iris)
+summary(lm(Petal.Length~Species, data=iris))
+
+methods(summary)
+
+summary.kot <- function(x) cat("Miau")
+a <- 3
+class(a) <- "kot"
+summary(a)
+
+methods(print)
+
+print.kot <- function(x) cat("Miau", a)
+a
+
+library(ggplot2)
+a <- ggplot(iris, aes(Sepal.Length))
+class(a)
+a
+
+summary.default <- function(...) 1
+
+?summary.lm
+??summary
+????summary
 
 ```
 
@@ -26,6 +74,26 @@ counter_factory <- function() {
   function() (i <<- i + 1)
 }
 counter_one <- counter_factory()
+counter_one()
+counter_one()
+counter_two <- counter_factory()
+counter_two()
+counter_two()
+counter_one()
+
+counter2 <- function() {
+  i <- 0
+  list(add = function() (i <<- i + 1), 
+       get = function() i)
+}
+counter <- counter2()
+counter$get()
+counter$add()
+
+as.list(environment(counter_one))
+```
+```{r}
+counter_one
 ```
 
 # Praca z listami
@@ -33,6 +101,35 @@ counter_one <- counter_factory()
 lapply, sapply, mcapply{parallel}, tapply
 
 ```{r}
+l <- list(1:5, LETTERS, T)
+c(1:5, LETTERS, T)
+
+lapply(l, length)
+
+lapply(l, head, 2)
+
+ll <- list(sum, mean, median)
+lapply(ll, function(FUN) FUN(1:10))
+
+sapply(ll, function(FUN) FUN(1:10))
+sapply(l, head, 2)
+
+vapply(ll, function(FUN) FUN(1:10), numeric(1))
+
+library(parallel)
+duzoIrysow <- lapply(1:100, function(i)  
+                     iris[sample(1:150, 150),])
+ww <- mclapply(duzoIrysow, 
+         function(iris)
+           lm(Petal.Length~Species, data=iris))
+
+t3 <- table(iris$Species, iris$Species, iris$Species)
+dim(t3)
+apply(t3, c(1,2), sum)
+
+i4 <- iris[,1:4]
+apply(i4, 1, mean)
+apply(i4, 2, mean)
 
 ```
 
@@ -41,20 +138,27 @@ Map, Reduce, Filter
 ```{r}
 cars_avg <- lapply(cars, mean)
 cars[] <- Map(`-`, cars, cars_avg)
+
 m <- lapply(1:5, function(i) matrix(runif(4),2,2))
+
 `+`(`+`(`+`(`+`(m[[1]], m[[2]]), m[[3]]), m[[4]]), m[[5]])
 Reduce(`+`, m)
+
 Filter(function(mat) det(mat) < 0, m)
 ```
 
 # Praca z funkcjami
 
 ```{r}
-formals()
-body()
-environment()
+formals(hist)
+body(counter_factory)
+environment(counter_one)
 
-trace(lm, exit = quote(cat("Fitted coefs", z$coefficients)))
+trace(lm, 
+      exit = quote(cat("Moje wspolczynniki", z$coefficients)))
+
+lm(Petal.Length~Species, iris)
+
 ```
 
 
