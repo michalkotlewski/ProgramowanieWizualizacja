@@ -51,7 +51,7 @@ W ramach tej fazy należy (zakładamy, że gra jeden gracz):
 Wynikiem pierwszej fazy jest opisana słownie oraz zaimplementowana strategia gry w SuperFarmera, wraz z wynikami symulacji długości gry jednego gracza stosującego ww. strategię.
 
 
-Kryteria oceny fazy 1:
+### Kryteria oceny fazy 1:
 
 A. Działanie
 
