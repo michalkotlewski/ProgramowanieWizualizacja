@@ -12,8 +12,8 @@ Plan spotkań MIM UW:
 
 * 6 X - Wprowadzenie do R, RStudio i knitr, [Wprowadzenie](http://pbiecek.github.io/Przewodnik/wprowadzenie.html), [Proton](http://smarterpoland.pl/index.php/2015/11/czy-jestes-hakerem-danych/), [Przetwarzanie](https://pbiecek.gitbooks.io/przewodnik/content/Programowanie/czyscic_przetwarzac.html)
 * 13 X - Zajęcia się nie odbędą [eRum]
-* 20 X - Instrukcje sterujące, pętle, funkcje, [Wykład](https://github.com/pbiecek/ProgramowanieWizualizacja/blob/master/MIMUW_2017/wyklad002.Rmd), [lub rozdział o funkcjach z](http://biecek.pl/R)
-* 27 X - [Projekt 1/1]; Funkcje ++, listy i przetwarzanie potokowe
+* 20 X - Instrukcje sterujące, pętle, funkcje, [Wykład](https://github.com/pbiecek/ProgramowanieWizualizacja/blob/master/MIMUW_2017/wyklad002.Rmd), [lub rozdział o pętlach](http://biecek.pl/R)
+* 27 X - [Projekt 1/1]; Funkcje ++, listy i przetwarzanie potokowe [Wykład](https://github.com/pbiecek/ProgramowanieWizualizacja/blob/master/MIMUW_2017/wyklad003.Rmd), [lub rozdział o funkcjach](http://biecek.pl/R)
 * 3 XI - Budowa pakietu
 * 10 XI - [Projekt 1/2]; Unit testy 
 * 17 XI - Debugowanie

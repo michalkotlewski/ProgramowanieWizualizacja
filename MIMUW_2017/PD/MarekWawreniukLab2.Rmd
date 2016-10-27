@@ -1,0 +1,53 @@
+---
+title: "lekcja2"
+author: "Marek Wawreniuk"
+date: "20 października 2016"
+output: html_document
+---
+
+```{r}
+install.packages("BetaBit")
+library("BetaBit")
+library(dplyr)
+proton()
+emp <- employees
+head(emp)
+loginInsecure = filter(emp, name == "John", surname == "Insecure")
+loginInsecure <- loginInsecure[3]
+proton(action = "login", login=loginInsecure)
+
+topPass <- top1000passwords
+for (i in 1:1000)
+  proton(action = "login", login=loginInsecure, password=topPass[i])
+
+logsInsecure <- logs
+slap <- filter(logsInsecure, login == "slap")
+
+#hostsInsecure <- hostsInsecure
+uniqueInsecure <- unique (slap["host"])
+# 
+#              host
+# 1   194.29.178.16
+# 3  194.29.178.108
+# 33 193.0.96.13.20
+# 42 193.0.96.13.38
+# 43 194.29.178.155
+
+proton(action = "server", host="194.29.178.16") #this one!
+proton(action = "server", host="194.29.178.108")
+proton(action = "server", host="193.0.96.13.20")
+proton(action = "server", host="193.0.96.13.38")
+proton(action = "server", host="194.29.178.155")
+
+pietraszkoPassHist <- bash_history
+grep('([:alpha:])+[ ]', pietraszkoPassHist, value=TRUE)
+
+  ```
+
+You can also embed plots, for example:
+
+```{r, echo=FALSE}
+plot(cars)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
