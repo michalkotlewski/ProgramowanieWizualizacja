@@ -1,0 +1,33 @@
+---
+title: "Proton"
+author: "Agnieszka Ciepielewska"
+date: "20 października 2016"
+output: html_document
+---
+
+
+```{r}
+library("BetaBit")
+library(rmarkdown)
+proton()
+john = employees[employees$surname == "Insecure", ]
+proton(action = "login", login=john[,3])
+for(i in top1000passwords){
+  if(proton(action = "login", login=john[,3], password=i) == "Success! User is logged in!"){
+    print(i)
+  }
+}
+login.pietra = employees[employees$surname == "Pietraszko", ]
+
+freqfunc <- function(x, n){
+  tail(sort(table(unlist(strsplit(as.character(x), ", ")))), n)
+}
+logs.pietra = logs[logs$login == "slap", ]
+logs.pietra = freqfunc(logs.pietra$host, 1)
+proton(action = "server", host = names(logs.pietra))
+
+pass.pietra = unique(gsub( " .*$", "", bash_history))
+proton(action = "login", login="slap", password="DHbb7QXppuHnaXGN")
+```
+
+

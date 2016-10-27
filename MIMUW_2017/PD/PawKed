@@ -1,0 +1,31 @@
+install.packages("BetaBit")
+proton()
+install.packages("rmarkdown")
+proton()
+library(dplyr)
+
+library(proton)
+library(BetaBit)
+1
+proton()
+head(employees)
+tmp <- filter(employees, name == "John", surname == "Insecure")
+tmp
+proton(action = "login", login="johnins")
+top1000passwords
+top1000passwords[1]
+for (i in 1:1000) {proton(action = "login", login="johnins", password=top1000passwords[i])}
+
+head(logs)
+tmp <- filter(employees, surname == "Pietraszko")
+logi <- filter(logs, login =="slap")
+head(logi)
+logi %>%
+  group_by(host) %>%
+  summarise(liczba = n())
+
+proton(action = "server", host="194.29.178.16")
+bash_history
+haslo <-filter(bash_history,  )     
+head(bash_history)
+ttt <- contains(" ", FALSE, bash_history)
