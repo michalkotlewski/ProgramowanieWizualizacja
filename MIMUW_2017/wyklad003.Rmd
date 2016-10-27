@@ -1,0 +1,60 @@
+---
+title: "Programowanie i Wizualizacja w R"
+author: "Funkcje cz. 2"
+date: "27 10 2016"
+output:
+  html_document: default
+  html_notebook: default
+---
+
+# Argument ...
+
+```{}
+```
+
+# Klasy S3
+
+```{r}
+
+```
+
+# Wspólny stan
+
+```{r}
+counter_factory <- function() {
+  i <- 0
+  function() (i <<- i + 1)
+}
+counter_one <- counter_factory()
+```
+
+# Praca z listami
+
+lapply, sapply, mcapply{parallel}, tapply
+
+```{r}
+
+```
+
+Map, Reduce, Filter
+
+```{r}
+cars_avg <- lapply(cars, mean)
+cars[] <- Map(`-`, cars, cars_avg)
+m <- lapply(1:5, function(i) matrix(runif(4),2,2))
+`+`(`+`(`+`(`+`(m[[1]], m[[2]]), m[[3]]), m[[4]]), m[[5]])
+Reduce(`+`, m)
+Filter(function(mat) det(mat) < 0, m)
+```
+
+# Praca z funkcjami
+
+```{r}
+formals()
+body()
+environment()
+
+trace(lm, exit = quote(cat("Fitted coefs", z$coefficients)))
+```
+
+

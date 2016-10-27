@@ -1,0 +1,33 @@
+---
+title: "lab2"
+author: "Hania Kranas"
+date: "20 paüdziernika 2016"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(BetaBit)
+library(dplyr)
+login1 <- (employees[employees$surname=='Insecure',])$login
+proton(action = "login", login=login1)
+y <- "Password or login is incorrect"
+for (i in top1000passwords){
+  x <- proton(action = "login", login=login1, password=i)
+  if (!x==y){
+    pass1 <- i
+  }
+}
+login2 <- (employees[employees$surname=='Pietraszko',])$login
+
+serwery <- logs[ logs$login==login2,]
+serwery2 <- summarise(group_by(serwery,host), licz=n())
+serwer1 <- arrange(serwery2, desc(c(serwery2$licz)) )
+serwer1 <- serwer1[serwer1$licz==max(serwer1$licz),]$host
+
+proton(action = "server", host=serwer1)
+
+```

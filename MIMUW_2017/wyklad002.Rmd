@@ -2,7 +2,9 @@
 title: "Programowanie i Wizualizacja w R"
 author: "Pętle i instrukcje sterujące"
 date: "20 10 2016"
-output: html_notebook
+output:
+  html_document: default
+  html_notebook: default
 ---
 
 # Wprowadzenie
@@ -34,15 +36,16 @@ p1 <- replicate(1000, {
   which.min(c(l1, l2, l3))
 })
 
-replicate(1000, {
-  lszkod <- rpois(1)
+table(p1)
+
+
+replicate(10, {
+  lszkod <- rpois(1, 1)
   sum(rexp(lszkod))
 })
 
 
-table(p1)
-
-?`while`
+# ?`while`
 y <- 1
 while(y == 1) {
   l1 <- runif(1) - 0.5
@@ -114,13 +117,13 @@ if (i == 2)
   cat("Tam")
 
 
-if (i == 2) 
-  cat("Tutaj")
-else 
-  cat("Tam")
+# if (i == 2) 
+#   cat("Tutaj")
+# else 
+#   cat("Tam")
 
-2
-/ 2
+# 2
+# / 2
 
 2 /
 2
@@ -168,7 +171,9 @@ a_plus_b(a=2)
 a_plus_b(b=2)
 a_plus_b(b=2, a=1)
 a_plus_b(d <- 2, c <- 2)
-a_plus_b(d = 2, c = 2)
+
+# Nie zadziała
+# a_plus_b(d = 2, c = 2)
 
 
 smieszna <- function(a = cat("Napisz mnie")) {
@@ -177,7 +182,6 @@ smieszna <- function(a = cat("Napisz mnie")) {
 
 smieszna()
 
-rm(list = "y")
 dziwna <- function(x = y) {
   y <- 2
   cat(x)
