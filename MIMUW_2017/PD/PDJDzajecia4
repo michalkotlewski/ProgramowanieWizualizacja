@@ -1,0 +1,40 @@
+---
+title: "JanDmitruk2"
+output: html_document
+---
+
+```{r}
+library(PogromcyDanych)
+
+Utrata_wartości<-function(model=NULL,marka=NULL,Paliwo=NULL){
+dane<-filter(auta2012,Rok.produkcji > 1999)
+dane$Cena.w.PLN<-ifelse(dane$Brutto.netto == netto,Dane$Cena.w.PLN/0.81,Dane$Cena.w.PLN)
+
+stopifnot(model %in% unique(dane$Model), marka %in% unique(dane$Marka), 
+          Paliwo %in% unique(dane$Rodzaj.paliwa))
+if (!is.null(model)) {
+   dane<-filter(dane, Model == model)
+}
+if (!is.null(marka)) {
+  dane<-filter(dane, Marka == marka)
+  }
+if (!is.null(Paliwo)) {
+   dane<-filter(dane, Rodzaj.paliwa == Paliwo)
+}
+
+tabela<-tapply(dane$Cena.w.PLN,dane$Rok.produkcji,mean)
+}
+srednia<-function(tabela){
+  tabela["2011"]/tabela["2012"]
+}
+marka<-function(m){
+  m<-"marka="+m
+  Utrata_wartości(m)
+}
+lapply(unique(auta2012$Marka),marka)
+lapply(c("Kia"),marka)
+
+```
+#tabelka
+#srednia
+#lapply po wszystkie średnie
