@@ -1,0 +1,500 @@
+---
+title: "Projekt 1/1"
+author: "Rafa³ Cylwa, Marek Wawreniuk"
+date: "25 paŸdziernika 2016"
+output: 
+  html_document:
+    toc: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Wstêp
+Poni¿ej przedstawiamy implementacjê gry Super Farmer w jêzyku R przy za³o¿eniu, ¿e gra tylko jeden gracz oraz proponowane przez nas strategie gry wraz z implementacj¹ i rozk³adami czasu gry.
+
+# Mechanizm gry
+
+## G³ówna pêtla gry
+G³ówna pêtla gry posiada jeden argument:
+- debug - wartoœæ tej zmiennej logicznej mówi nam czy chcemy w³¹czyæ tryb debugowania.
+```{r}
+gra_1 <- function() {
+  
+  wektor_gracza <- c(R = 0, S = 0, P = 0, C = 0, H = 0, SD = 0, BD = 0)
+  wektor_stada <- c(R = 60, S = 24, P = 20, C = 12, H = 6, SD = 4, BD = 2)
+  kostki <- c(zielona = 'R', czerwona = 'R')
+  koniec  = FALSE
+  ile <- 0
+  
+  while (!koniec) {
+    
+    up <- ruch_gracz_yolo(wektor_gracza, wektor_stada);
+    wektor_gracza <- up[,1]
+    wektor_stada <- up[,2]
+    koniec <- sprawdz_czy_koniec(wektor_gracza)
+    kostki <- rzut_kostkami();
+    up <- update_stanu(wektor_gracza, wektor_stada, kostki);
+    wektor_gracza <- up[,1]
+    wektor_stada <- up[,2]
+    koniec <- sprawdz_czy_koniec(wektor_gracza)
+    ile <- ile + 1
+  }
+  return (ile)
+}
+```
+
+## Funkcja rzutu kostkami
+```{r}
+rzut_kostkami <- function() {
+  c <- floor(runif(1, 1, 13))
+  z <- floor(runif(1, 1, 13))
+  zielona = ''
+  czerwona = ''
+  if(z %in% c(1:6)) zielona = 'R'
+  if(z %in% c(7:9)) zielona = 'S'
+  if(z == 10)       zielona = 'P'
+  if(z == 11)       zielona = 'C'
+  if(z == 12)       zielona = 'W'
+  
+  if(c %in% c(1:6))  czerwona = 'R'
+  if(c %in% c(7:8))  czerwona = 'S'
+  if(c %in% c(9:10)) czerwona = 'P'
+  if(c == 11)          czerwona = 'H'
+  if(c == 12)        czerwona = 'F'
+  
+  return(c(zielona, czerwona))
+}
+
+```
+
+## Funkcja update stanu gry
+```{r}
+zamien_zwierzaki <- function(w_do, w_od, zwierzak, ile) {
+  if (w_od[zwierzak] < ile) {
+    w_do[zwierzak] <- w_do[zwierzak] + w_od[zwierzak]
+    w_od[zwierzak] <- 0;
+  } else {
+    w_do[zwierzak] <- w_do[zwierzak] + ile
+    w_od[zwierzak] <- w_od[zwierzak] - ile
+  }
+  return (cbind(w_do, w_od))
+}
+
+update_stanu <- function(w_gracza, w_stada, ko) {
+  
+  if (ko[1] == ko[2]) {
+    zwierzak <- ko[1]
+    liczba_naleznych_zwierzakow <- as.integer((w_gracza[zwierzak] + 2)/2)
+    wynik_zamienienia <- zamien_zwierzaki(w_gracza, w_stada, ko[1],
+                                          liczba_naleznych_zwierzakow)
+  } else { #ko[1] != ko[2]
+    z_zwierzak_na_kostce <- ko[1]
+    c_zwierzak_na_kostce <- ko[2]
+    if (z_zwierzak_na_kostce == 'W') {
+      if (w_gracza['BD'] > 0) {
+        wynik_zamienienia <- zamien_zwierzaki(w_stada, w_gracza, zwierzak = 'BD', 1)
+      } else { #w_gracza['BD'] == 0
+        for (i in 1:4) {
+          wynik_zamienienia <- zamien_zwierzaki(w_stada, w_gracza, names(w_stada)[i], 
+                                                w_gracza[names(w_stada)[i]])
+          w_gracza <- wynik_zamienienia[,2]
+          w_stada <- wynik_zamienienia[,1]
+        }
+      }
+      wynik_zamienienia <- wynik_zamienienia[,2:1]
+    } else {
+      liczba_naleznych_zwierzakow <- as.integer((w_gracza[z_zwierzak_na_kostce] + 1)/2)
+      wynik_zamienienia <- zamien_zwierzaki(w_gracza, w_stada, z_zwierzak_na_kostce,
+                                            liczba_naleznych_zwierzakow)
+    }
+    w_gracza <- wynik_zamienienia[,1]
+    w_stada <- wynik_zamienienia[,2]
+    
+    if (c_zwierzak_na_kostce == 'F') {
+      if (w_gracza['SD'] > 0) {
+        wynik_zamienienia <- zamien_zwierzaki(w_stada, w_gracza, zwierzak = 'SD', 1)
+      } else {
+        wynik_zamienienia <- zamien_zwierzaki(w_stada, w_gracza, zwierzak = 'R',
+                                              w_gracza['R'])
+      }
+      wynik_zamienienia <- wynik_zamienienia[,2:1]
+    } else {
+      liczba_naleznych_zwierzakow <- as.integer((w_gracza[c_zwierzak_na_kostce] + 1)/2)
+      wynik_zamienienia <- zamien_zwierzaki(w_gracza, w_stada, c_zwierzak_na_kostce, 
+                                            liczba_naleznych_zwierzakow)
+    }
+  }
+  return (wynik_zamienienia)
+}
+
+```
+
+##Funkcja kupowania zwierzêcia przez gracza
+```{r}
+kup_zwierze_yolo <- function(jakie_zwierze, wektor_gracza, wektor_stada){
+  wartosc_zwierzat <- c(R = 1, S = 6, P = 12, C = 36, H = 72, SD = 6, BD = 36)
+  wektor_wymiany <- c(R = 0, S = 0,  P = 0, C = 0, H = 0, SD = 0, BD = 0)
+  suma <- 0
+  zwierze <- 1
+  ile_zwierzat <- 1
+  i <- 1
+  koniec <- FALSE
+  
+  while(i < jakie_zwierze && koniec == FALSE) {
+    if(wektor_gracza[i] != 0){
+      for(j in 1:wektor_gracza[i]) {
+        
+        if(suma >= wartosc_zwierzat[jakie_zwierze]) {
+          koniec <- TRUE
+          break
+        }
+        suma = suma + wartosc_zwierzat[i]
+        zwierze <- i
+        ile_zwierzat <- j 
+      }
+    }
+    i <- i+1
+  }
+  
+  #tworzymy wektor do wymiany
+  for(i in 1:zwierze) {
+    wektor_wymiany[i] <- wektor_gracza[i]
+  }
+  wektor_wymiany[zwierze] <- ile_zwierzat
+  
+  #oddajem namiarowe kroliki
+  wektor_wymiany[1] <- wektor_wymiany[1] - (suma - wartosc_zwierzat[jakie_zwierze])
+  
+  wektor_gracza <- wektor_gracza - wektor_wymiany
+  wektor_stada <- wektor_stada + wektor_wymiany
+  
+  wektor_gracza[jakie_zwierze] = wektor_gracza[jakie_zwierze] + 1
+  wektor_stada[jakie_zwierze] = wektor_stada[jakie_zwierze] - 1
+  
+  
+  return(cbind(wektor_gracza,wektor_stada))
+}
+```
+
+# Opis strategii
+
+## Strategia 1: "YOLO"
+Strategia "YOLO" polega na bezmyœlnym kupowaniu zwierz¹t o jak najwy¿szej wartoœci kiedy tylko siê da. Jej istota polega na tym, ¿e gracz w ogóle nie zwraca sobie g³owy psami obronnymi. Taktyka ta pozwala na szybkie zakoñczenie gry, ale jest obarczona niema³ym ryzykiem. 
+```{r}
+ruch_gracz_yolo <- function(wektor_gracza, wektor_stada) {
+  #znajdujemy najstarsze zwierze, ktorego nie mamy i staramy sie je kupic
+  i <- 5
+  wartosc_zwierzat <- c(R = 1, S = 6, P = 12, C = 36, H = 72, SD = 6, BD = 36)
+  while(i >1) {
+    if(wektor_gracza[i] == 0 && sum(wektor_gracza[1:(i - 1)]*wartosc_zwierzat[1:(i - 1)]) >= wartosc_zwierzat[i])
+    {
+      zakup <- kup_zwierze_yolo(i, wektor_gracza, wektor_stada)
+      return(zakup)
+    }
+    i <- i-1
+  }
+  return(cbind(wektor_gracza, wektor_stada))
+}
+
+
+```
+Gracz "YOLO" gra œrednio <TU WPISZ ŒREDNI¥ RAFA£>, wiêc oczekiwana iloœæ wylosowanych wilków to <>/12
+
+## Strategia 2: "ANTY-YOLO"
+"ANTY-YOLO" polega na tym, ¿e gracz boi siê zagro¿eñ. Jego g³ównym celem podczas gry bêdzie zakup obu psów. Dopiero posiadaj¹c oba zwierzaki, zaczyna graæ jak gracz "YOLO", poniewa¿ siê ju¿ nie boi. W sytuacji gdy któryœ pies wraca do g³ownego stada, "ANTY-YOLO" jest skupiony tylko i wy³¹cznie na zakupie brakuj¹cego zwierzêcia obronnego.
+```{r}
+ruch_gracz_anty_yolo <- function (w_gracza, w_stada) {
+  up <- cbind(w_gracza, w_stada)
+  wartosc_zwierzat <- c(R = 1, S = 6, P = 12, C = 36, H = 72, SD = 6, BD = 36)
+  
+  if (w_gracza[6] == 0) {#Sprawdzenie czy w stadzie gracza istnieje ma³y pies
+    if (sum(w_gracza[1:5]*wartosc_zwierzat[1:5]) >= wartosc_zwierzat[6]) {
+      zakup <- kup_zwierze_yolo(6, w_gracza, w_stada)
+      return(zakup)
+    }
+  } else if (w_gracza[7] == 0) {#Sprawdzenie czy w stadzie gracza istnieje du¿y pies
+    if (w_gracza[7] == 0 && sum(w_gracza[1:6]*wartosc_zwierzat[1:6]) 
+        >= wartosc_zwierzat[7]) {
+      zakup <- kup_zwierze_yolo(7, w_gracza, w_stada)
+      return(zakup)
+    }
+  } else {#jeœli oba psy s¹ w stadzie gracza, to zaczyna on graæ taktyk¹ "YOLO"
+    return (ruch_gracz_yolo(w_gracza, w_stada))
+  }
+  return (up)
+}
+```
+Powy¿sza taktyka jest nieoptymalna ze wzglêdu na to, ¿e wczesny zakup owych psów znacz¹co spowalnia tempo rozmna¿ania iloœci zwierz¹t w stadzie.
+
+## Strategia 3: "ANTY-YOLO-N-YOLO"
+Ten sposób gry jest po³¹czeniem obu wy¿ej. Gracz z góry sobie ustala iloœæ (n) zakupionych przez siebie psów obronnych. Dopóki nie zakupi³ w trakcie gry podanej iloœci psów, gra on taktyk¹ "ANTY-YOLO", jednak po przekroczeniu owej liczby kieruje siê zasadami gracza "YOLO".
+
+Taktyka wymiana zmiany kodu funkcji gra(), gdy¿ po ka¿dym ruchu sprawdzamy czy zosta³ zakupiony któryœ z psów. W tym celu zaimplementowana zosta³a funkcja aktualizuj¹ca wartoœæ n.
+```{r}
+n_anty_yolo_yolo_zmiana <- function (wartosc1, wartosc2, n) {
+  if (wartosc2 - wartosc1 == 1) {
+    return (n - 1)
+  } else {
+    return (n)
+  }
+}
+###########################################################################
+#W FUNKCJI gra() MUSIMY AKTUALIZOWAC WARTOSC N I ROBIMY TO W TEN SPOSÓB   #
+#n <- n_anty_yolo_yolo_zmiana(ile_psow_przed_ruchem, ile_psow_po_ruchu, n)#
+###########################################################################
+ruch_gracz_anty_yolo_n_yolo <- function (w_gracza, w_stada, n) {
+  if (n > 0) {
+    return (ruch_gracz_anty_yolo(w_gracza, w_stada))
+  } else {
+    return (ruch_gracz_yolo(w_gracza, w_stada))
+  }
+}
+
+``` 
+
+## Strategia 4: "ANTY-YOLO-N-YOLO-K-RABBITS"
+Ten sposób gry to rozszerzenie "ANTY-YOLO-N-YOLO", które sprawdza dodatkowo ile mamy królików w stadzie. Za³o¿enie jest takie, ¿e nie do koñca op³aca siê kupowaæ psy od razu kiedy je na nas staæ, robimy to dopiero kiedy mamy w stadzie zwierzêta o wartoœci wiêkszej ni¿ k królików.
+```{r}
+ruch_gracz_anty_yolo_n_yolo_k_rabbits <- function (w_gracza, w_stada, n, k) {
+  wartosc_zwierzat <- c(R = 1, S = 6, P = 12, C = 36, H = 72, SD = 6, BD = 36)
+  aktualna_liczba_krolikow <- sum(w_gracza[1:5]*wartosc_zwierzat[1:5])
+  if (aktualna_liczba_krolikow < k) {
+    return (ruch_gracz_yolo(w_gracza, w_stada))
+  } else {
+    return (ruch_gracz_anty_yolo_n_yolo(w_gracza, w_stada, n))
+  }
+}
+```
+
+# Symulacje
+Porównanie rozk³adów czasu gry poszczególnych strategii.
+```{r, echo=FALSE}
+#funkcje pomocnicze
+sprawdz_czy_koniec <- function(x) {
+  
+  for (i in x[1:5]) {
+    if (i < 1) {
+      return (FALSE)
+    }
+  }
+  
+  return (TRUE)
+  
+}
+
+```
+
+
+```{r, echo=FALSE}
+gra_2 <- function() {
+  
+  wektor_gracza <- c(R = 0, S = 0, P = 0, C = 0, H = 0, SD = 0, BD = 0)
+  wektor_stada <- c(R = 60, S = 24, P = 20, C = 12, H = 6, SD = 4, BD = 2)
+  kostki <- c(zielona = 'R', czerwona = 'R')
+  koniec  = FALSE
+  ile <- 0
+  
+  while (!koniec) {
+    
+    up <- ruch_gracz_anty_yolo(wektor_gracza, wektor_stada)
+    wektor_gracza <- up[,1]
+    wektor_stada <- up[,2]
+    koniec <- sprawdz_czy_koniec(wektor_gracza)
+    kostki <- rzut_kostkami();
+    up <- update_stanu(wektor_gracza, wektor_stada, kostki)
+    wektor_gracza <- up[,1]
+    wektor_stada <- up[,2]
+    koniec <- sprawdz_czy_koniec(wektor_gracza)
+    ile <- ile + 1
+  }
+  return (ile)
+}
+```
+
+
+```{r, echo = FALSE}
+gra_3 <- function(debug = FALSE) {
+  
+  wektor_gracza <- c(R = 0, S = 0, P = 0, C = 0, H = 0, SD = 0, BD = 0)
+  wektor_stada <- c(R = 60, S = 24, P = 20, C = 12, H = 6, SD = 4, BD = 2)
+  kostki <- c(zielona = 'R', czerwona = 'R')
+  koniec  = FALSE
+  ile <- 0
+  n <- 5 
+  k <- 40
+  
+  while (!koniec) {
+    
+    ile_psow_przed_ruchem <- wektor_gracza[6] + wektor_gracza[7]
+    up <- ruch_gracz_anty_yolo_n_yolo(wektor_gracza, wektor_stada, n);
+    wektor_gracza <- up[,1]
+    wektor_stada <- up[,2]
+    ile_psow_po_ruchu <- wektor_gracza[6] + wektor_gracza[7]
+    n <- n_anty_yolo_yolo_zmiana(ile_psow_przed_ruchem, ile_psow_po_ruchu, n)
+    if (debug == TRUE) {
+      print("after ruch:")
+      print(wektor_gracza)
+      print(wektor_stada)
+    }
+    koniec <- sprawdz_czy_koniec(wektor_gracza)
+    kostki <- rzut_kostkami()
+    if (debug == TRUE) {
+      print("kostki:")
+      print(kostki)
+    }
+    up <- update_stanu(wektor_gracza, wektor_stada, kostki)
+    wektor_gracza <- up[,1]
+    wektor_stada <- up[,2]
+    if (debug == TRUE) {
+      print("after update:")
+      print(wektor_gracza)
+      print(wektor_stada)
+    }
+    koniec <- sprawdz_czy_koniec(wektor_gracza)
+    ile <- ile + 1
+    if (debug == TRUE) {
+      print(ile)
+      print("")
+    }
+    
+    
+  }
+  return (ile)
+}
+```
+
+
+
+
+
+```{r, echo = FALSE}
+# G³ówna pêtla gry posiada jeden argument:
+# - debug - wartoœæ tej zmiennej logicznej mówi nam czy chcemy w³¹czyæ tryb debugowania.
+gra_4 <- function(debug = FALSE) {
+  
+  wektor_gracza <- c(R = 0, S = 0, P = 0, C = 0, H = 0, SD = 0, BD = 0)
+  wektor_stada <- c(R = 60, S = 24, P = 20, C = 12, H = 6, SD = 4, BD = 2)
+  kostki <- c(zielona = 'R', czerwona = 'R')
+  koniec  = FALSE
+  ile <- 0
+  n <- 5 
+  k <- 40
+  
+  while (!koniec) {
+    
+    ile_psow_przed_ruchem <- wektor_gracza[6] + wektor_gracza[7]
+    up <- ruch_gracz_anty_yolo_n_yolo_k_rabbits(wektor_gracza, wektor_stada, n, k);
+    wektor_gracza <- up[,1]
+    wektor_stada <- up[,2]
+    ile_psow_po_ruchu <- wektor_gracza[6] + wektor_gracza[7]
+    n <- n_anty_yolo_yolo_zmiana(ile_psow_przed_ruchem, ile_psow_po_ruchu, n)
+    if (debug == TRUE) {
+      print("after ruch:")
+      print(wektor_gracza)
+      print(wektor_stada)
+    }
+    koniec <- sprawdz_czy_koniec(wektor_gracza)
+    kostki <- rzut_kostkami()
+    if (debug == TRUE) {
+      print("kostki:")
+      print(kostki)
+    }
+    up <- update_stanu(wektor_gracza, wektor_stada, kostki)
+    wektor_gracza <- up[,1]
+    wektor_stada <- up[,2]
+    if (debug == TRUE) {
+      print("after update:")
+      print(wektor_gracza)
+      print(wektor_stada)
+    }
+    koniec <- sprawdz_czy_koniec(wektor_gracza)
+    ile <- ile + 1
+    if (debug == TRUE) {
+      print(ile)
+      print("")
+    }
+    
+    
+  }
+  return (ile)
+}
+```
+
+
+```{r, warning=FALSE}
+library(ggplot2)
+czasy_gry_1 <- replicate(10000, gra_1())
+czasy_gry_2 <- replicate(10000, gra_2())
+czasy_gry_3 <- replicate(10000, gra_3())
+czasy_gry_4 <- replicate(10000, gra_4())
+```
+
+## Strategia 1: "YOLO"
+Œrednia: 
+```{r}
+mean(czasy_gry_1)
+```
+Mediana
+```{r}
+median(czasy_gry_1)
+```
+Rozk³ad:
+```{r}
+qplot(czasy_gry_1, geom = "histogram", binwidth = 5)
+```
+
+## Strategia 2: "ANTY-YOLO"
+
+Œrednia: 
+```{r}
+mean(czasy_gry_2)
+```
+Mediana
+```{r}
+median(czasy_gry_2)
+```
+Rozk³ad:
+```{r}
+qplot(czasy_gry_2, geom = "histogram", binwidth = 5)
+```
+
+## Strategia 3: "ANTY-YOLO-N-YOLO"
+Œrednia: 
+```{r}
+mean(czasy_gry_3)
+```
+Mediana
+```{r}
+median(czasy_gry_3)
+```
+Rozk³ad:
+```{r}
+qplot(czasy_gry_3, geom = "histogram", binwidth = 5)
+```
+
+## Strategia 4: "ANTY-YOLO-N-YOLO-K-RABBITS"
+Œrednia: 
+```{r}
+mean(czasy_gry_4)
+```
+Mediana
+```{r}
+median(czasy_gry_4)
+```
+Rozk³ad:
+```{r}
+qplot(czasy_gry_4, geom = "histogram", binwidth = 5)
+```
+
+```{r, echo=FALSE}
+czasy <- as.data.frame(rbind(cbind(czas = czasy_gry_1, strategia = "Strategia YOLO"),
+               cbind(czas = czasy_gry_2, strategia = "Strategia Anty-YOLO"),
+               cbind(czas = czasy_gry_3, strategia = "ANTY-YOLO-N-YOLO"),
+               cbind(czas = czasy_gry_4, strategia = "ANTY-YOLO-N-YOLO-K-RABBITS")))
+czasy$czas <- as.numeric(czasy$czas)
+```
+
+
+
