@@ -1,0 +1,33 @@
+---
+title: "lab 20 pazdziernika"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+
+library(proton)
+
+proton()
+
+Login <- employees[employees$surname == "Insecure",]
+proton(action = "login", login = "johnins")
+
+
+pass <- top1000passwords
+for (i in 1:1000) proton(action = "login", login="johnins", password=pass[i])
+
+
+Login_p <- employees[employees$surname == "Pietraszko",]
+logi_p <- logs[logs$login=="slap",]
+hosts<-as.data.frame(table(logi_p$host))
+proton(action = "server", host="194.29.178.16")
+
+
+bash <- bash_history
+commends<-sub(" .*", "", bash)
+commends <- as.data.frame(commends)
+commends_p <- commends[commends$commends=="ps"]
+bash[53]
+
+
+```

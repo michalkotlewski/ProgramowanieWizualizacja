@@ -1,0 +1,69 @@
+---
+title: "gra proton"
+author: "Pawe≥ GÛrniak"
+date: "20 paüdziernika 2016"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r cars}
+summary(cars)
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+install.packages(PogromcyDanych)
+install.packages("PogromcyDanych")
+install.packages("PogromcyDanych")
+install.packages("BetaBit")```
+install.packages("BetaBit")
+install.packages("PogromcyDanych")
+library(PogromcyDanych)
+library(BetaBit)Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+library(BetaBit)
+proton()
+tabela_hase≥<-data.frame(employees)
+proton(action = "login", login="johnins")
+has≥a <- top1000passwords
+has≥a <- top1000passwords
+has≥a[1:1000]
+has≥a[1:1000]
+for (i in 1:1000) {
+  proton(action = "login", login="johnins", password=has≥a[i])
+  cat(paste("aktualna wartosc i to ", i, "\n"))
+}
+indeksy <- 1:1000
+indeksy[7]
+for (i in indeksy) {
+  proton(action = "login", login="johnins", password=has≥a[i])
+  cat(paste("aktualna wartosc i to ", i, "\n"))
+}
+for (i in indeksy) {
+  proton(action = "login", login="johnins", password=has≥a[i])
+}
+for (i in 1:1000) {
+  proton(action = "login", login="johnins", password="has≥a[i])
+}
+for (i in 1:1000) {proton(action = "login", login="johnins", password="has≥a[i]")}
+2+2
+stop
+interrupt R
+for (i in 1:1000) {proton(action = "login", login="johnins", password=has≥a[i])}
+logowania -> dataset(logs)
+logowania = data.frame(logs)
+for (i in 1:1000) {proton(action = "login", login="johnins", password=has≥a[i])}
+?logs
+logowania = data.frame(logs)
+proton(action = "server", host="194.29.178.143")

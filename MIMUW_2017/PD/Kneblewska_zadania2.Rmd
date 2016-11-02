@@ -1,0 +1,44 @@
+---
+title: "zajecia2"
+output: html_document
+---
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r}
+install.packages("BetaBit")
+library(BetaBit)
+library(dplyr)
+
+proton()
+
+#zad 1
+head(employees) 
+
+filter(employees,surname == "Insecure")
+proton(action = "login", login="johnins")
+
+#zad 2
+head(top1000passwords)
+for(i in 1:1000){
+  proton(action = "login", login="johnins", password=top1000passwords[i])
+}
+
+#zad 3
+head(logs)
+filter(employees,surname == "Pietraszko")
+logi <- filter(logs,login == "slap")
+grupa <- group_by(logi, host)
+grupa %>% 
+  summarise(ilosc_logowan = n())
+proton(action = "server", host="194.29.178.16")
+
+#zad4
+head(bash_history)
+help.search("slap", bash_history)
+
+```
+
+

@@ -1,0 +1,15 @@
+---
+title: "Test1"
+author: "JanDmitruk"
+date: "19 października 2016"
+output: html_document
+---
+```{r,warning=FALSE,message=FALSE}
+proton()
+proton(action = "login", login="johnins")
+x<-proton(action = "login", login="johnins", password="y")
+for(i in top1000passwords){if(proton(action = "login", login="johnins", password=i)!=x) y<-i}
+proton(action = "login", login="johnins", password=y)
+z<-filter(logs,login == "johnins")
+
+```

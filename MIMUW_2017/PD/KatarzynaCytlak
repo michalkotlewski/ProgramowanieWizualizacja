@@ -1,0 +1,25 @@
+head---
+title: "Zajęcia 2"
+author: "Katarzyna"
+date: "5 października 2016"
+output: html_document
+---
+Dane o filmach.
+
+
+
+
+```{r,message=FALSE,warning=FALSE}
+x=table(employees)
+sort(x)
+filter(employees,surname=="Insecure")
+
+```
+
+You can also embed plots, for example:
+
+```{r, echo=FALSE}
+plot(cars)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.

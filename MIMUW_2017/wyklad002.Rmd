@@ -1,0 +1,237 @@
+---
+title: "Programowanie i Wizualizacja w R"
+author: "Pętle i instrukcje sterujące"
+date: "20 10 2016"
+output:
+  html_document: default
+  html_notebook: default
+---
+
+# Wprowadzenie
+
+Losujemy trzy liczby z trzech różnych rozkładów.
+Która jest najmniejsza?
+
+```{r}
+{
+  l1 <- runif(1) - 0.5
+  l2 <- rnorm(1)
+  l3 <- rt(1,1)
+  which.min(c(l1, l2, l3))
+}
+
+```
+
+# Pętle
+
+## Po co są nam pętle?
+
+replicate, for, while, repeat
+
+```{r}
+p1 <- replicate(1000, {
+  l1 <- runif(1) - 0.5
+  l2 <- rnorm(1)
+  l3 <- rt(1,1)
+  which.min(c(l1, l2, l3))
+})
+
+table(p1)
+
+
+replicate(10, {
+  lszkod <- rpois(1, 1)
+  sum(rexp(lszkod))
+})
+
+
+# ?`while`
+y <- 1
+while(y == 1) {
+  l1 <- runif(1) - 0.5
+  l2 <- rnorm(1)
+  l3 <- rt(1,1)
+  y <- which.min(c(l1, l2, l3))
+}
+
+repeat({
+  l1 <- runif(1) - 0.5
+  l2 <- rnorm(1)
+  l3 <- rt(1,1)
+  y <- which.min(c(l1, l2, l3))
+  if (y == 1) break()
+})
+
+results <- c()
+for (i in 1:10) {
+  l1 <- runif(1) - 0.5
+  l2 <- rnorm(1)
+  l3 <- rt(1,1)
+  results[i] <- which.min(c(l1, l2, l3))
+}
+
+for (i in LETTERS) {
+  l1 <- runif(1) - 0.5
+  l2 <- rnorm(1)
+  l3 <- rt(1,1)
+  cat(i, " ", which.min(c(l1, l2, l3)), "\n")
+}
+
+lista <- list("a", 1:4, T)
+for (i in lista) {
+  cat(i, "\n")
+}
+
+for (i in iris) {
+  cat(head(i), "\n")
+}
+
+
+results <- c(2)
+while(results[length(results)] == 1) {
+  l1 <- runif(1) - 0.5
+  l2 <- rnorm(1)
+  l3 <- rt(1,1)
+  results <- c(results, which.min(c(l1, l2, l3)))
+}
+
+```
+
+# Instrukcje warunkowe
+
+ifelse, if, if else, switch
+
+```{r}
+i <- 1
+if (i == 2) {
+  cat("Tutaj")
+} else {  
+  cat("Tam") 
+}
+
+
+if(i == 2)cat("Tutaj")else cat("Tam")
+
+if (i == 2) 
+  cat("Tutaj") else 
+  cat("Tam")
+
+
+# if (i == 2) 
+#   cat("Tutaj")
+# else 
+#   cat("Tam")
+
+# 2
+# / 2
+
+2 /
+2
+
+i <- "kot"
+switch(i,
+       kot = cat("Mial\n"),
+       pies = cat("Hau\n"),
+       mysz = cat("\n"),
+       cat("inne"))
+
+i <- 1
+ifelse(i == c(1,2,3),
+       "Tutaj",
+       "Tam")
+
+ifelse(i == c(1,2,3),
+       LETTERS,
+       1:26)
+
+x <- c(1, 2, NA, 4, 5, NA)
+ifelse(!is.na(x),
+       x,
+       3)
+
+
+```
+
+# Funkcje
+
+function
+
+```{r}
+(function(a, b) a+b)(2,2)
+
+a_plus_b <- function(a, b) a+b
+a_plus_b(2,2)
+
+
+a_plus_b <- function(a = 1, b = 2) a+b
+a_plus_b(2,1)
+a_plus_b(2)
+a_plus_b()
+a_plus_b(a=2)
+a_plus_b(b=2)
+a_plus_b(b=2, a=1)
+a_plus_b(d <- 2, c <- 2)
+
+# Nie zadziała
+# a_plus_b(d = 2, c = 2)
+
+
+smieszna <- function(a = cat("Napisz mnie")) {
+ 2+2 
+}
+
+smieszna()
+
+dziwna <- function(x = y) {
+  y <- 2
+  cat(x)
+}
+dziwna()
+y
+
+dziwna <- function(x = y) {
+  y <- 1
+  if (runif(1) > 0.5) {
+    y <- 2
+  } else {
+    y <- "2"
+  }
+  cat(x)
+}
+dziwna()
+
+```
+
+```{r}
+x <- 1:20
+plot(x, x^2 + sin(x), type="o", pch=19)
+
+p <- function(x) {
+  cat(deparse(substitute(x)))
+  cat(" = ")
+  cat(x)
+}
+p(2+2)
+```
+
+```{r}
+x <- runif(100)
+fx <- ecdf(x)
+fx(10)
+
+ecdf(x)(10)
+
+power_function <- function(exp = 2) {
+  function(x) x^exp
+}
+fun2 <- power_function(2)
+fun2(5)
+
+ostatnia <- function(fun) {
+  fun(runif(100))
+}
+ostatnia(mean)
+ostatnia(sum)
+
+```
+

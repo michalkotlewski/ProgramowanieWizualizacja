@@ -1,0 +1,53 @@
+---
+title: "Zajęcia 1"
+author: "Natalia"
+date: "5 października 2016"
+output: html_document
+---
+Dane o filmach.
+
+
+
+
+```{r,message=FALSE,warning=FALSE}
+summary(cars)
+library("PogromcyDanych")
+head(serialeIMDB)
+x=table(serialeIMDB$serial)
+sort(x)
+y<-filter(serialeIMDB,serial=="Friends")
+#dim(y)
+#summary(y)
+group_by(y,sezon)->z
+v=summarize(z,srednia=mean(ocena),max(ocena))
+desc(serialeIMDB$serial)
+
+serialeIMDB %>% 
+  group_by(serial) %>% 
+  summarize(srednia=mean(ocena)) %>% 
+  arrange(-srednia)
+
+ggplot(y,aes(x=sezon,y=ocena))+geom_boxplot()
+
+```
+
+You can also embed plots, for example:
+
+```{r, echo=FALSE}
+plot(cars)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+
+
+
+
+
+
+
+
+
+
+
+
+
