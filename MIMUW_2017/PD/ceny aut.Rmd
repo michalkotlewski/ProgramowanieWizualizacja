@@ -1,0 +1,39 @@
+---
+title: "ceny"
+author: "da"
+date: "3 listopada 2016"
+output: html_document
+---
+
+
+```{r}
+library(dplyr)
+library(PogromcyDanych)
+
+auta<-auta2012
+
+auta<-group_by(auta, Marka, Model, Rok.produkcji)
+vect<-summarise(auta, mean(Cena.w.PLN))
+
+
+statystyki_ceny <- function(marka=NA, model=NA, lata=NA){
+  dane<-vect
+  if(!is.na(marka)){
+    dane <- filter(vect, Marka %in% marka)
+  } 
+  if(!is.na(model)){
+    dane <- filter(dane, Model %in% model)
+  } 
+  if(!is.na(lata)){
+    dane <- filter(dane, Rok.produkcji %in% lata)
+  }
+  
+ dane
+
+
+}
+ statystyki_ceny(marka="Kia")
+```
+
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
