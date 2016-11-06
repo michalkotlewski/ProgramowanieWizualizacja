@@ -7,6 +7,10 @@ https://goo.gl/forms/Dlz9HaV9DqrWLcds1
 Materialy na start
 Pogromcy Danych: http://pogromcydanych.icm.edu.pl
 
+Z XKCD o jakości kodu.
+
+![XKCD](http://imgs.xkcd.com/comics/code_quality.png)
+
 Plan spotkań MIM UW:
 ----------------
 
