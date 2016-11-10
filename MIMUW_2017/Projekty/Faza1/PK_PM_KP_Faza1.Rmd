@@ -1,0 +1,397 @@
+---
+title: "Faza 1"
+author: "Pawe³ Kêdzior, Patrycja Matys, Katarzyna Pyrtek"
+date: "10 listopada 2016"
+output: 
+  html_document:
+    fig_caption: yes
+    toc: true
+---
+
+
+
+```{r include=FALSE}
+library(knitr) 
+library(markdown)
+```
+
+#1. Wstêp
+
+W ramach fazy 1 nale¿a³o przygotowaæ strategiê gry w Superfarmera, wraz z wynikami symulacji d³ugoœci gry jednego gracza. 
+
+#2. Strategia gry
+
+Po przeprowadzaniu analizy matematycznej wiêkszoœci sensownych (naszym zdaniem) strategii, ostatecznie najlepsze wyniki daje strategia, która sk³ada siê z nastêpuj¹cych etapów:
+
+1. Do wartoœci zagrody gracza równej 33, trzymamy same króliki (wartoœæ oczekiwana takiego rozwi¹zania jest najwiêksza, dla wiêkszej liczby królików op³aca siê kupiæ ma³ego psa).
+2. Dla wartoœci od 33 do 46: ma³y pies i same króliki.
+3. Od 47 do 71: do 40 królików, ma³y pies, reszta œwinie i owce.
+Liczba owiec do ceil((wartoœæ zagrody - 46)/6), liczba œwiñ do floor[Liczba owiec]/2] 
+
+Od 72 postêpujemy tak samo, z tym, ¿e w banku mamy ju¿ konia:
+
+4. Do wartoœci zagrody 105 trzymamy same króliki i 1 konia
+5. Dla wartoœci od 105 do 118: 1 koñ, ma³y pies i same króliki.
+6. Dla 119 do 127: 1 koñ, ma³y pies, reszta œwinie i owce.
+7. Dla wartoœci powy¿ej 127 robimy wymiany i koñczymy grê. Ponadto, je¿eli wartoœæ zagrody przekracza 144 to kupujemy drugiego konia, a w nastêpnej turze zakupimy brakuj¹ce zwierzêta.
+
+
+#3. Funkcje
+ 
+
+
+##3.1 Funkcje zwi¹zane z mechanik¹ gry
+
+###Deklaracja zmiennych
+ 
+```{r} 
+start_rozgrywki <- function() {
+stado <<- c(60, 24, 20, 12, 6, 4, 2)
+krolik <<- 1
+owca <<- 2
+swinia <<- 3
+krowa <<- 4
+kon <<- 5
+maly_pies <<- 6
+duzy_pies <<- 7
+lis <<- 8
+wilk <<- 9 
+zagroda <<-  rep(0, times = 7) 
+}
+```
+
+###Rzut koœæmi 
+
+```{r} 
+rzut <- function() {
+  wynik <<- c(sample(c(1, 1, 1, 1, 1, 1, 2, 2, 2, 3, 4, 9), 1), sample(c(1, 1, 1, 1, 1, 1, 2, 2, 3, 3, 5, 8), 1))
+  return(wynik)
+  } 
+```
+
+###Efekt rzutu koœæmi na stan zagrody
+
+```{r} 
+efekt_rzutu <- function() {
+  kostki <- rzut()
+  stado_poczatkowe <<- c(60, 24, 20, 12, 6, 4, 2)
+  wynik = rep(0, times = 9)
+  
+  wynik[kostki[1]] = wynik[kostki[1]] + 1
+  wynik[kostki[2]] = wynik[kostki[2]] + 1
+  
+  if (wynik[wilk] == 1)
+  {
+  for (i in 1:4) {
+  stado[i] <<- stado[i] + zagroda[i]
+  zagroda[i] <<- 0
+  }
+  }
+  if (wynik[lis] == 1)
+  {
+  if (zagroda[maly_pies] > 0)
+  {
+  zagroda[maly_pies] <<- zagroda[maly_pies] - 1
+  stado[maly_pies] <<- stado[maly_pies] + 1
+  } else {
+  stado[krolik] <<- stado[krolik] + zagroda[krolik]
+  zagroda[krolik] <<- 0
+  }
+  }
+  
+  
+  for (j in 1:5)
+  {
+  if (wynik[j] > 0) {
+  stado[j] <<- stado[j] - min(trunc((zagroda[j] + wynik[j]) / 2), stado[j])
+  zagroda[j] <<- min(zagroda[j] +trunc((zagroda[j] + wynik[j]) / 2), stado_poczatkowe[j])
+  }
+  } 
+  } 
+```
+ 
+###Wartoœæ zagrody
+
+```{r}
+wartosc_zagrody <- function(zagroda) {
+  wartosc_w_krolikach <<- c(1, 6, 12, 36, 72, 6, 36)
+  wartosc = rep(0, times = 7)
+  for (i in 1:7) {
+  wartosc[i] <- zagroda[i] * wartosc_w_krolikach[i]
+  }
+  return(sum(wartosc))
+  }
+```
+
+###Sprawdzenie warunku koñcowego
+
+```{r}
+warunek_koncowy <- function() {
+  for (i in 1:5) {
+  if (zagroda[i] == 0)
+  return("Nie")
+  }
+  return("Wygrana")
+  }
+```
+
+###Podstawowa funkcja dokonuj¹ca wymiany miêdzy zagrod¹, a stadem
+
+```{r}
+wymiana <- function(co_sprzedaj,
+                    co_kup,
+                    ile_sprzedaj,
+                    ile_kup) {
+                    zagroda[co_kup] <<- zagroda[co_kup] + ile_kup
+                    zagroda[co_sprzedaj] <<- zagroda[co_sprzedaj] - ile_sprzedaj
+                    stado[co_kup] <<- stado[co_kup] - ile_kup
+                    stado[co_sprzedaj] <<- stado[co_sprzedaj] + ile_sprzedaj
+                    return(zagroda)
+                    }
+```
+
+##3.2 Funkcje zwi¹zane ze strategi¹ 
+
+###Funkcja kupuj¹ca dro¿sze zwierzê za kilka tañszych 
+
+```{r}
+sprzedaj_kilka_tanszych <- function(zwierze) {
+  if (zwierze == kon) {
+  wektor_ograniczen <<- rep(0, times = 6)
+  } else {
+  wektor_ograniczen <<- c(1, 1, 1, 1, 1, 0)
+  }
+  zagroda[zwierze] <<- zagroda[zwierze] + 1
+  stado[zwierze] <<- stado[zwierze] - 1
+  do_zaplaty <<- -wartosc_w_krolikach[zwierze]
+  wektor_kosztu <<- c(1, 6, 12, 36, 0, 6)
+  for (i in c(3, 2, 6, 1)) {
+  while (do_zaplaty < 0 && zagroda[i] > wektor_ograniczen[i] && wartosc_w_krolikach[zwierze] > wektor_kosztu[i]) {
+  wymiana(i, zwierze, 1, 0)
+  do_zaplaty <<- do_zaplaty + wektor_kosztu[i]
+  }
+  }  
+  }
+```
+ 
+###Funkcja sprzedaj¹ca dro¿sze zwierzê za kilka tañszych  
+
+```{r}
+kup_kilka_tanszych  <- function(zwierze) {
+  wektor_kosztu <<- c(1, 6, 12, 36, 0, 6)
+  do_zaplaty <<- -wartosc_w_krolikach[zwierze]
+  #dro¿sze zwierzêta to krowa, œwinia lub owca
+  if (zwierze == krowa) {
+  wektor_kosztu_zwierze <<- c(36, 6, 3)
+  }
+  if (zwierze == swinia) {
+  wektor_kosztu_zwierze <<- c(12, 2, 0)
+  }
+  if (zwierze == owca) {
+  wektor_kosztu_zwierze <<- c(6, 0, 0)
+  }
+  zagroda[zwierze] <<- zagroda[zwierze] + 1
+  stado[zwierze] <<- stado[zwierze] - 1
+  for (i in 1:3) {
+  while (do_zaplaty < 0 && zagroda[i] == 0 && zagroda[zwierze] > 1 && wartosc_w_krolikach[zwierze] > wektor_kosztu[i]) {
+  wymiana(zwierze, i, 0, wektor_kosztu_zwierze[i])
+  do_zaplaty <<- do_zaplaty + wektor_kosztu_zwierze[i] * wektor_kosztu[i]
+  }
+  }
+  }
+```
+
+###Funkcja, gdy wartoœæ zagrody jest bliska 127
+
+```{r}
+prawie_wygrana <- function() {
+  if (zagroda[maly_pies] == 0 && zagroda[krolik] > 9) {
+  wymiana(krolik, maly_pies, 6, 1)
+  }
+  if (zagroda[krolik] == 0 && zagroda[maly_pies] > 0) {
+  wymiana(maly_pies, krolik, 1, 6)
+  }
+  if (zagroda[owca] == 0 && zagroda[krolik] > 6) {
+  wymiana(krolik, owca, 6, 1)
+  }
+  if (zagroda[swinia] == 0 && zagroda[krolik] > 12) {
+  wymiana(krolik, swinia, 12, 1)
+  } 
+  }
+```
+
+
+###Funkcja sprzedaj¹ca drugiego konia, tak aby kupiæ brakuj¹ce zwierzêta
+
+```{r}
+sprzedaj_drugiego_konia  <- function() {
+  zagroda[kon] <<- zagroda[kon] - 1
+  stado[kon] <<- stado[kon] + 1
+  do_zaplaty <<- -wartosc_w_krolikach[kon]
+  ilosc <<- c(6, 1, 1, 1)
+  wektor_kosztu <<- c(6, 6, 12, 36)
+  while (do_zaplaty < 0) {
+  for (i in c(4, 3, 2, 1)) {
+  if (do_zaplaty < 0 &&
+  stado[i] >= ilosc[i] && do_zaplaty + wektor_kosztu[i] <= 0) {
+  wymiana(kon, i, 0, ilosc[i])
+  do_zaplaty <<- do_zaplaty + wektor_kosztu[i]
+  }
+  } 
+  } 
+  }
+```
+
+###Funkcja generuj¹ca strategiê
+
+```{r} 
+strategia <- function() {
+  
+  #1. Do wartoœci zagrody gracza równej 33, trzymamy same króliki.
+  
+  if (wartosc_zagrody(zagroda) <= 33) {
+  if (zagroda[swinia] > 0) {
+  wymiana(swinia, krolik, 1, 12)
+  } else if (zagroda[owca] > 0) {
+  wymiana(owca, krolik, 1, 6)
+  }
+  }
+  
+  #2. Dla wartoœci od 33 do 46: ma³y pies i same króliki.
+  
+  if (wartosc_zagrody(zagroda) > 33 &&
+  wartosc_zagrody(zagroda) <= 46) {
+  if (zagroda[maly_pies] == 0 &&
+  zagroda[krolik] > 9) {
+  wymiana(krolik, maly_pies, 6, 1)
+  } else if (zagroda[swinia] > 0) {
+  wymiana(swinia, krolik, 1, 12)
+  } else if (zagroda[owca] > 0) {
+  wymiana(owca, krolik, 1, 6)
+  }
+  }
+  
+  #3. Od 47 do 71: do 40 królików, ma³y pies, reszta œwinie i owce.
+  
+
+  if (wartosc_zagrody(zagroda) >= 47 &&
+      wartosc_zagrody(zagroda) <= 71) {
+      if (zagroda[maly_pies] == 0 && zagroda[krolik] > 6)
+      {
+      wymiana(krolik, maly_pies, 6, 1)
+      }
+      if (zagroda[swinia] < floor((zagroda[krolik] - 34) / 12)) {
+      wymiana(krolik, swinia, 12, 1)
+      }
+      if (zagroda[owca] < floor((zagroda[krolik] - 35) / 6)) {
+      wymiana(krolik, owca, 6, 1)
+      }
+      }
+  
+  #Kupujemy pierwszego konia
+  if (wartosc_zagrody(zagroda) >= 72 && zagroda[kon] == 0)
+  {
+  sprzedaj_kilka_tanszych(kon)
+  }
+  
+  #Od 72 postêpujemy tak samo, z tym, ¿e w zagrodzie mamy ju¿ konia.
+  #4. Do wartoœci zagrody 105 trzymamy same króliki i 1 konia
+  
+  if (zagroda[kon] == 1 &&
+  wartosc_zagrody(zagroda) >= 72 && wartosc_zagrody(zagroda) < 105) {
+  if (zagroda[swinia] > 0) {
+  wymiana(swinia, krolik, 1, 12)
+  } else if (zagroda[owca] > 0) {
+  wymiana(owca, krolik, 1, 6)
+  }
+  }
+  
+  #5. Dla wartoœci od 105 do 118: 1 koñ, ma³y pies i same króliki.
+  
+  if (zagroda[kon] == 1 &&
+  wartosc_zagrody(zagroda) >= 105 &&
+  wartosc_zagrody(zagroda) <= 118) {
+  if (zagroda[maly_pies] == 0 &&
+  zagroda[krolik] > 9) {
+  wymiana(krolik, maly_pies, 6, 1)
+  } else if (zagroda[swinia] > 0) {
+  wymiana(swinia, krolik, 1, 12)
+  } else if (zagroda[owca] > 0) {
+  wymiana(owca, krolik, 1, 6)
+  }
+  }
+  
+  
+  #6. Dla 119 do 127: 1 koñ, ma³y pies, reszta œwinie i owce.
+  
+  if (zagroda[kon] == 1 &&
+  wartosc_zagrody(zagroda) >= 119 &&
+  wartosc_zagrody(zagroda) < 127) {
+  prawie_wygrana() 
+  }
+  
+  #7. Dla wartoœci powy¿ej 127 robimy wymiany i koñczymy grê. Ponadto, je¿eli wartoœæ zagrody przekracza 144 to kupujemy drugiego konia (pod warunkiem, ¿e brakuje nam co najmniej 2 zwierz¹t), a w nastêpnej turze zakupimy brakuj¹ce zwierzêta.
+  
+  if (wartosc_zagrody(zagroda) >= 144) {
+  #kupujemy drugiego konia
+  if (zagroda[kon] < 2 && sum(zagroda[1:5] == 0) > 1) {
+  sprzedaj_kilka_tanszych(kon)
+  } else if (zagroda[kon] > 1) {
+  #sprzedajemy drugiego konia
+  sprzedaj_drugiego_konia()
+  }
+  }
+  
+  
+  if (wartosc_zagrody(zagroda) >= 127) 
+  {
+  #Gracz mo¿e kilka zwierz¹t zamieniæ na jedno zwierzê. Mo¿e te¿ jedno zwierzê wymieniæ na kilka zwierz¹t.
+  if ((zagroda[krolik] == 0 ||
+  zagroda[owca] == 0 ||
+  zagroda[swinia] == 0) &&
+  zagroda[krowa] > 1) {
+  kup_kilka_tanszych(krowa) 
+  } else if ((zagroda[krolik] == 0 ||
+  zagroda[owca] == 0) &&
+  zagroda[swinia] > 1) {
+  kup_kilka_tanszych(swinia)
+  } else if (zagroda[krolik] == 0 &&
+  zagroda[owca] > 1) {
+  kup_kilka_tanszych(owca)
+  } else if (zagroda[owca] == 0 &&
+  zagroda[krolik] > 6) {
+  sprzedaj_kilka_tanszych(owca)
+  } else if (zagroda[swinia] == 0) {
+  sprzedaj_kilka_tanszych(swinia)
+  } else if (zagroda[krowa] == 0) {
+  sprzedaj_kilka_tanszych(krowa)
+  }
+  } 
+  return(zagroda)
+  } 
+```
+
+#4. Symulacje
+ 
+##4.1 Symulacja pojedyñczej rozgrywki
+
+```{r}
+gra <- function() {
+  start_rozgrywki()
+  czas <<- 0
+  while (warunek_koncowy() != "Wygrana") {
+  strategia()
+  efekt_rzutu()
+  czas <<- czas + 1
+  }
+  return(czas)
+  }
+``` 
+
+##4.2 Symulacje n rozgrywek
+
+```{r}
+czasy_gry <- replicate(10000, gra())
+summary(czasy_gry)
+```
+ 
