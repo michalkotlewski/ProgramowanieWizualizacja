@@ -1,5 +1,5 @@
 ---
-title: "Symulacja gry Superfarmer"
+title: "Symulacja gry SuperFarmer"
 author: "Przemysław Dycha,  Mateusz Siwiec"
 date: "10 listopada 2016"
 output:
