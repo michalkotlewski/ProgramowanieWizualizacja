@@ -1,0 +1,247 @@
+---
+title: "SuperFarmer"
+author: "Natalia Kneblewska, Jan Dmitruk"
+date: "10 listopada 2016"
+output: html_document
+---
+
+##Strategia
+
+1. Przy ponad 10 krolikach kupujemy malego psa za kroliki.  
+2. Przy wymianach zawsze zostawiamy w stadzie odpowiednio: do 24 krolikow, 1 owcy, 1 swini, 1 krowy, 1 konia.   
+3. Wymieniamy nadwyzkowe zwierz?ta na najdrozsze zwierze, ktorego brakuje.  
+4. Dokupujemy drugiego malego psa przy ponad 16 krolikach, jesli nie przeszkodzi to w powyzszych wymianach.  
+
+
+
+```{r setup, include=TRUE}
+#parametry
+Cena1 <- c(1, 6, 12, 36, 72, 6, 36)
+names(Cena1) <- c("Krolik", "Owca", "Swinia", "Krowa", "Kon", "MalyPies", "DuzyPies")
+
+
+#ograniczenia
+MaxZwierzat <- c(60, 24, 20, 12, 6, 4, 2)
+names(MaxZwierzat) <- c("Krolik", "Owca", "Swinia", "Krowa", "Kon", "MalyPies", "DuzyPies")
+
+#counter
+counter <- numeric(10000) 
+
+
+################## WYMIANY #####################
+
+zrob_wymiane <- function(stado8) {
+  #parametry strategii - ile zwierzat zostawiamy, przy ilu krolikach kupujemy 1 i 2 malego psa
+  Rozrodcze <- c(24, 1, 1, 1, 1, 4, 2)
+  pies1 <- 11
+  pies2 <- 17
+  
+  Nadwyzka <- ifelse( stado8 > Rozrodcze , stado8 - Rozrodcze , 0)
+  
+  Wartosc_nadwyzki <- Nadwyzka * Cena1
+  
+  Suma_nadwyzki <- sum(Wartosc_nadwyzki)
+  
+  nazwy_zwierzat <- c("Krolik", "Owca", "Swinia", "Krowa", "Kon", "MalyPies", "DuzyPies")
+  names(Nadwyzka) <- nazwy_zwierzat
+  names(Wartosc_nadwyzki) <- nazwy_zwierzat
+
+  Wymiana(stado8, Suma_nadwyzki, Wartosc_nadwyzki, Nadwyzka, pies1, pies2)
+}
+
+Wymiana <- function(Stado2, Suma_nadwyzki, Wartosc_nadwyzki, Nadwyzka, pies1, pies2){
+  if (all(Stado2[c("Krolik", "Owca", "Swinia", "Krowa")] == c(0, 0, 0, 0)) && Stado2["MalyPies"] > 0) {
+    Stado2 <- MPies_na_Kroliki(Stado2)
+  } else if ( Stado["Krolik"] >= pies1 && Stado["MalyPies"] < 1 ) {
+    Stado2 <- Kroliki_na_MPsa(Stado2)
+  } else if ( wystarczy_na_nowe_zwierze(Stado2,Suma_nadwyzki) ) {
+    Stado2 <- uzupelnij_zwierzeta(Stado2,Suma_nadwyzki,Wartosc_nadwyzki,Nadwyzka)
+  } else if ( Suma_nadwyzki >= Cena1["Krowa"] && Stado2["Krowa"] < 2 ) {
+    Stado2 <- Kup("Krowa",Stado2,Wartosc_nadwyzki,Nadwyzka)
+  } else if ( Stado["Krolik"] >= pies2 && Stado["MalyPies"] < 2 ){ 
+   Stado2 <- Kroliki_na_MPsa(Stado2)
+  } 
+  return(Stado2)
+}
+
+
+MPies_na_Kroliki <- function(stado4) {
+  stado4["MalyPies"] <- stado4["MalyPies"] - 1
+  stado4["Krolik"] <- stado4["Krolik"] + 6
+  return(stado4)
+}
+
+
+Kroliki_na_MPsa <- function(stado3) {
+  stado3["Krolik"] <- stado3["Krolik"] - 6
+  stado3["MalyPies"] <- stado3["MalyPies"] + 1
+  return(stado3)
+}
+
+
+wystarczy_na_nowe_zwierze <- function(stado7,Suma_nadwyzki) {
+  wynik <- FALSE
+  for (zwierze in c("Krolik","Owca","Swinia","Krowa","Kon")) {
+    if ((Suma_nadwyzki > Cena1[zwierze]) && (stado7[zwierze] == 0)) {
+      wynik <- TRUE
+    }
+  }
+  return(wynik)
+}
+
+################skonczyc sprawdzac ta funkcje
+uzupelnij_zwierzeta <- function(stado6,Suma_nadwyzki,Wartosc_nadwyzki,Nadwyzka) {
+  if (stado6["Krolik"] == 0 && stado6["Owca"]>0) {
+    stado6 <- Owca_na_Kroliki(stado6) 
+  } else {
+    for (zwierze in c("Kon","Krowa","Swinia","Owca")) {
+      if (Suma_nadwyzki >= Cena1[zwierze] && stado6[zwierze] == 0) {
+        stado6 <-Kup(zwierze,stado6,Wartosc_nadwyzki,Nadwyzka)
+        break()
+      }
+    }
+  }
+  return(stado6)
+}
+
+Owca_na_Kroliki <- function(stado5) {
+  stado5["Owca"] <- stado5["Owca"] - 1
+  stado5["Krolik"] <- stado5["Krolik"] + 6
+  return(stado5)
+}
+
+Kup <- function(zwierze_kupowane,stado,Wartosc_nadwyzki,Nadwyzka) {
+  
+  DoZaplaty<-Cena1[zwierze_kupowane]
+  for (zwierze in c("Kon","Krowa","Swinia","Owca","Krolik")) {
+    if(DoZaplaty != 0) {
+      if (Wartosc_nadwyzki[zwierze] >= DoZaplaty) {
+        if (DoZaplaty < Cena1[zwierze]) {
+          stado[zwierze] <- stado[zwierze] - 1
+          stado[zwierze_kupowane] <- stado[zwierze_kupowane] + (Cena1[zwierze]/Cena1[zwierze_kupowane])
+          DoZaplaty <- 0
+        } else { 
+          stado[zwierze] <- stado[zwierze] - DoZaplaty/Cena1[zwierze]
+          stado[zwierze_kupowane] <- stado[zwierze_kupowane] + 1
+          DoZaplaty <- 0
+        }
+      } else {
+      stado[zwierze] <- stado[zwierze] - Nadwyzka[zwierze]
+      DoZaplaty <- DoZaplaty - Wartosc_nadwyzki[zwierze] 
+      }
+    }
+  }
+  return(stado)
+}
+
+
+################## ROZGRYWKA #####################
+po_rzucie <- function(stado10) {
+  wynik_zielona <- rzut_zielona()
+  wynik_czerwona <- rzut_czerwona()
+  if (wynik_zielona == wynik_czerwona) {
+    stado10 <- przyrost(wynik_zielona,2,stado10)
+  } else {
+    stado10 <- przyrost(wynik_zielona, 1, stado10)
+    stado10 <- przyrost(wynik_czerwona, 1, stado10)
+  }
+  return(stado10)
+}
+
+#***************** rzuty *************************
+rzut_zielona <- function() {
+  sample(c("Krolik", "Krolik", "Krolik", "Krolik", "Krolik", "Krolik", "Owca", "Owca", "Owca", "Swinia", "Krowa", "Wilk"), 1)
+}
+
+
+rzut_czerwona <- function() {
+  sample(c("Krolik", "Krolik", "Krolik", "Krolik", "Krolik", "Krolik", "Owca", "Owca", "Swinia", "Swinia", "Kon", "Lis"), 1)
+}
+
+
+#*********** zmiana ilosci zwierzat ***************
+przyrost <- function(zwierze, liczba_na_kostkach, stado11) {
+  if (zwierze == "Wilk") {
+    stado11 <- wilk_zjada(stado11)
+  } else if (zwierze == "Lis") {
+    stado11 <- lis_zjada(stado11)
+  } else {
+    stado11[zwierze] <- min(floor((stado11[zwierze] + liczba_na_kostkach) / 2) + stado11[zwierze], MaxZwierzat[zwierze])
+  }
+  return(stado11)
+}
+
+
+wilk_zjada <- function(stado12) {
+  if (stado12["DuzyPies"] > 0) {
+    stado12["DuzyPies"] <- stado12["DuzyPies"] - 1
+  } else {
+    for (zwierze in c("Krolik", "Owca", "Swinia", "Krowa")){
+      stado12[zwierze] <- 0
+    }
+  }
+  return(stado12)
+}
+
+
+
+lis_zjada <- function(stado13) {
+  if (stado13["MalyPies"] > 0) {
+    stado13["MalyPies"] <- stado13["MalyPies"] - 1
+  } else {
+    stado13["Krolik"] <- 0
+  }
+  return(stado13)
+}
+
+
+#*********** koniec gry ***************
+koniec_gry <- function(stado9) {
+  all(stado9 >= c(1, 1, 1, 1, 1, 0, 0))
+}
+
+
+################### GRA ######################
+for(j in 1:10000){
+  
+  #stan poczatkowy gry 
+  Stado <- c(0, 0, 0, 0, 0, 0, 0)
+  names(Stado) <- c("Krolik", "Owca", "Swinia", "Krowa", "Kon", "MalyPies", "DuzyPies")
+  
+  ####gra####
+  while (!koniec_gry(Stado)) {
+    
+    Stado <- zrob_wymiane(Stado)
+    if (koniec_gry(Stado)) {break}
+    Stado <- po_rzucie(Stado)
+    counter[j] <- counter[j] + 1
+  }
+}
+
+```
+
+
+##Wyniki
+Przyklady otrzymanych wynikow:
+```{r,  message=FALSE, warning=FALSE}
+head(counter)
+```
+
+Podstawowe statystyki:
+```{r,  message=FALSE, warning=FALSE}
+summary(counter)
+```
+
+##Wykresy (1/2)
+```{r,  message=FALSE, warning=FALSE, fig.align='center'}
+library(ggplot2)
+
+ggplot() + aes(counter) + geom_histogram(aes(fill = ..count..), bins = 100) + labs(title="Histogram liczby rzutow") + labs(x="Liczba rzutow", y="Liczba wystapien") + scale_fill_gradient("Count", low = "black", high = "steelblue3")
+```
+
+##Wykresy (2/2)
+```{r,  message=FALSE, warning=FALSE, fig.align='center'}
+library(ggplot2)
+ggplot() + aes(counter)+ geom_density(fill="steelblue3")  + labs(title="Rozklad liczby rzutow") + labs(x="Liczba rzutow", y="Prawdopodobienstwo") 
+```
+

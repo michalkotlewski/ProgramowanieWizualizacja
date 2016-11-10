@@ -7,6 +7,10 @@ https://goo.gl/forms/Dlz9HaV9DqrWLcds1
 Materialy na start
 Pogromcy Danych: http://pogromcydanych.icm.edu.pl
 
+Z XKCD o jakości kodu.
+
+![XKCD](http://imgs.xkcd.com/comics/code_quality.png)
+
 Plan spotkań MIM UW:
 ----------------
 
@@ -14,7 +18,7 @@ Plan spotkań MIM UW:
 * 13 X - Zajęcia się nie odbędą [eRum]
 * 20 X - Instrukcje sterujące, pętle, funkcje, [Wykład](https://github.com/pbiecek/ProgramowanieWizualizacja/blob/master/MIMUW_2017/wyklad002.Rmd), [lub rozdział o pętlach](http://biecek.pl/R)
 * 27 X - [Projekt 1/1]; Funkcje ++, listy i przetwarzanie potokowe [Wykład](https://github.com/pbiecek/ProgramowanieWizualizacja/blob/master/MIMUW_2017/wyklad003.Rmd), [lub rozdział o funkcjach](http://biecek.pl/R)
-* 3 XI - Budowa pakietu
+* 3 XI - Budowa pakietu [materiały](http://pbiecek.github.io/Przewodnik/Programowanie/pakiety/po_co.html)
 * 10 XI - [Projekt 1/2]; Unit testy 
 * 17 XI - Debugowanie
 * 24 XI - Profilowanie kodu
@@ -51,4 +55,36 @@ W ramach tej fazy należy (zakładamy, że gra jeden gracz):
 Wynikiem pierwszej fazy jest opisana słownie oraz zaimplementowana strategia gry w SuperFarmera, wraz z wynikami symulacji długości gry jednego gracza stosującego ww. strategię.
 
 
+### Kryteria oceny fazy 1:
+
+A. Działanie
+
+Dobre rozwiązanie powinno:
+
+- dać się uruchomić na innym komputerze (moim),
+- poprawnie implementować zasady gry w SuperFarmera,
+- zliczać czas gry w liczbie losowań kostką,
+- badać rozkład czasu gry przez powtórzenie symulacji 10000 razy.
+
+B. Modułowość kodu 
+
+Dobre rozwiązanie powinno:
+
+- składać się z funkcji,
+- nazwy funkcji powinny wyjaśniać co funkcje robią,
+- funkcje powinny byc krótkie, max 1 ekran, idealnie 5-10 linii,
+- funkcje związane ze strategią powinny być oddzielone od funkcji związanych z mechaniką gry,
+- funkcje nie powinny korzystać z globalnych parametrów, powinny przyjmować argumenty których potrzebują i jako wynik zwracać nowy stan zmiennych.
+
+C. Elastyczność i czytelność rozwiązania
+
+Dobre rozwiązanie powinno:
+
+- być parametryzowane, parametry powinny znajdować się na początku rozwiązania,
+- zmienne powinny mieć czytelne nazwy,
+- wartości tam gdzie można powinny być czytelne (nazywane elementy wektorów),
+- kod powinien być czytelnie sformatowany, należy unikać długich cebulek,
+- unikać kopiowania podobnych bloków instrukcji, które można zastąpić pętlą.
+
+ 
 
