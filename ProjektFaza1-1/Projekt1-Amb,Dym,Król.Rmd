@@ -1,0 +1,313 @@
+---
+title: "Hodowla Zwierz¹tek"
+author: "Anna Dymowska, Adam Król, Dominik Ambroziak"
+date: "9 listopada 2016"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+# Za³o¿enia strategii
+
+####1. Gdy jesteœmy w stanie wymieniæ tañsze zwierzêta na dro¿sze - wymieniamy (z wyj¹tkiem sytuacji z punktu 5.). 
+
+####2. W drug¹ stronê wyminiamy tylko wtedy, gdy jest to ruch koñcz¹cy grê.
+
+####3. Du¿ego psa kupujemy przed krow¹.
+
+####4. Nie kupujemy ma³ych psów, poniewa¿ nadmiar królików zazwyczaj jest wymieniany na dro¿sze zwierze.
+
+####5. Staramy siê zawsze mieæ przynajmniej jednego królika. Nie dokonujemy wymian, które powodowa³yby wyzerowanie stanu posiadanych królików.
+
+#Implementacja
+
+### Parematry
+
+Nasz program jest mo¿liwy do modyfikacji na wielu ró¿nych p³aszczyznach. Jeœli chcielibyœmy zmieniæ pierwotne za³o¿enia gry, jest to mo¿liwe poprzez zmianê parametrów.
+```{r parametry}
+kroliki_stado<-60
+owce_stado<-24
+swinie_stado<-20
+krowy_stado<-12
+d_psy_stado<-2
+konie_stado<-6
+m_psy_stado<-4
+
+kroliki_start<-0
+owce_start<-0
+swinie_start<-0
+krowy_start<-0
+d_psy_start<-0
+konie_start<-0
+m_psy_start<-0
+
+kroliki_krolikowartosc<-1
+owce_krolikowartosc<-6
+swinie_krolikowartosc<-12
+krowy_krolikowartosc<-36
+d_psy_krolikowartosc<-36
+konie_krolikowartosc<-72
+m_psy_krolikowartosc<-6
+
+ilosc_zw_do_rozmnozenia<-2
+przyrost_zwierzat<-1
+
+tracone_zwierzeta<-60
+```
+
+###Tablica zwierz¹t
+Miejsce, w którym trzymamy posiadane zwierzêta nazywamy zagrod¹. W tablicy "zwierzeta" przechowywane s¹ informacje o liczbie zwierzêt znajduj¹cych siê w naszej zagrodzie, w stadzie i ich wartoœci w królikach.
+
+```{r functions}
+zwierzeta <- 
+  data.frame(
+  krolik = c(kroliki_start, kroliki_krolikowartosc, kroliki_stado),
+  owca = c(owce_start, owce_krolikowartosc, owce_stado),
+  swinia = c(swinie_start, swinie_krolikowartosc, swinie_stado),
+  krowa = c(krowy_start, krowy_krolikowartosc, krowy_stado),
+  duzy.pies = c(d_psy_start, d_psy_krolikowartosc, d_psy_stado),
+  kon = c(konie_start, konie_krolikowartosc, konie_stado),
+  maly.pies = c(m_psy_start, m_psy_krolikowartosc, m_psy_stado),
+  row.names = c("w_zagrodzie", "krolikowartosc", "w_stadzie")
+  )
+
+zwierzeta
+```
+Funkcja przywracaj¹ca wartoœci pocz¹tkowe tablicy zwierzêta.
+```{r label0.5}
+resetuj_tablice <- function() {
+  data.frame(
+  krolik = c(kroliki_start, kroliki_krolikowartosc, kroliki_stado),
+  owca = c(owce_start, owce_krolikowartosc, owce_stado),
+  swinia = c(swinie_start, swinie_krolikowartosc, swinie_stado),
+  krowa = c(krowy_start, krowy_krolikowartosc, krowy_stado),
+  duzy.pies = c(d_psy_start, d_psy_krolikowartosc, d_psy_stado),
+  kon = c(konie_start, konie_krolikowartosc, konie_stado),
+  maly.pies = c(m_psy_start, m_psy_krolikowartosc, m_psy_stado),
+  row.names = c("w_zagrodzie", "krolikowartosc", "w_stadzie")
+  )
+  }
+```
+
+###Losowanie zwierz¹t
+Na pocz¹tku ka¿dej tury wykonywany jest rzut koœcmi. Informacje o otrzymanych wynikach zapisujemy w wekorze "wektor_kostek". Odwo³ujemy sie do tych wartoœci w nastêpnych funkcjach.
+```{r label1}
+
+rzut_koscmi<-function(){
+  nakostkach<-c(0,0,0,0,0,0,0,0,0)
+  # names(nakostkach)<-c("krolik","owca","swinia","krowa","duzy.p","kon","maly.p","wilk","lis")
+  zielona.kostka<-sample(1:9, 1, prob=c(0.5 , 0.25, 1/12 , 1/12, 0, 0,0, 1/12,0))
+  czerwona.kostka<-sample(1:9, 1, prob=c(0.5 , 1/6, 1/6 , 0, 0, 1/12, 0,0, 1/12))
+  
+  nakostkach[zielona.kostka]=nakostkach[zielona.kostka]+1
+  nakostkach[czerwona.kostka]=nakostkach[czerwona.kostka]+1
+  
+  return(nakostkach)
+}
+
+wektor_kostek<-rzut_koscmi()
+names(wektor_kostek)<-c("krolik","owca","swinia","krowa","duzy.p","kon","maly.p","wilk","lis")
+
+wektor_kostek
+```
+
+###Zmiana stanu zagrody
+Poni¿sze dwie funkcje bardzo czêsto pojawiaj¹ siê naszym programie. Wystêpuj¹ w innych funkcjach, zarówno w tych dotycz¹cych strategii, jak i w tych odpowiedzialnych za mechanikê gry.
+```{r label2}
+dodaj_do_zagrody<-function(nr_zwierzecia, liczba, tmp_zwierzeta){
+  a<-min(liczba, tmp_zwierzeta[3,nr_zwierzecia])
+  tmp_zwierzeta[1,nr_zwierzecia]=tmp_zwierzeta[1,nr_zwierzecia]+a
+  tmp_zwierzeta[3,nr_zwierzecia]=tmp_zwierzeta[3,nr_zwierzecia]-a
+  
+  return(tmp_zwierzeta)
+}
+```
+
+```{r laba}
+oddaj_do_stada<-function(nr_zwierzecia, liczba, tmp_zwierzeta){
+  a<-min(liczba, tmp_zwierzeta[1,nr_zwierzecia])
+  tmp_zwierzeta[1,nr_zwierzecia]=tmp_zwierzeta[1,nr_zwierzecia]-a
+  tmp_zwierzeta[3,nr_zwierzecia]=tmp_zwierzeta[3,nr_zwierzecia]+a
+  
+  return(tmp_zwierzeta)
+}
+```
+###Dodawanie wylosowanych zwierz¹t
+```{r label3,5}
+cud_narodzin<-function(nakostkach, tmp_zwierzeta){
+  for (i in c(1:4,6)){ #miejsca numer 1, 2, 3, 4, 6 odpowiadaj¹ za zwierzêta hodowlane, które mo¿emy otrzymaæ z koœci
+    if( nakostkach[i] != 0){
+      liczba_mlodych <- floor((tmp_zwierzeta[1,i]+nakostkach[i])/ilosc_zw_do_rozmnozenia)*przyrost_zwierzat
+      tmp_zwierzeta<-dodaj_do_zagrody(i, liczba_mlodych, tmp_zwierzeta)
+    }
+  }
+  return(tmp_zwierzeta)
+}
+```
+
+###Drapie¿niki
+
+####Lis
+
+```{r label3}
+
+mamy_pieska<-function(tmp_zwierzeta){
+  return(tmp_zwierzeta[1,7]!=0)
+}
+```
+
+```{r labels}
+przychodzi_lis<-function(tmp_zwierzeta){
+  if(mamy_pieska(tmp_zwierzeta)){     
+    tmp_zwierzeta<-oddaj_do_stada(7,1,tmp_zwierzeta)
+  } else {
+    tmp_zwierzeta<-oddaj_do_stada(1,tracone_zwierzeta,tmp_zwierzeta)
+  }
+  
+  return(tmp_zwierzeta)
+}
+```
+
+```{r poluje}
+poluje_lis<-function(nakostkach, tmp_zwierzeta){
+  if(nakostkach[9]==1){tmp_zwierzeta<-przychodzi_lis(tmp_zwierzeta)}
+  return(tmp_zwierzeta)
+}
+```
+
+####Wilk
+
+```{r psisko}
+mamy_psisko<-function(tmp_zwierzeta){
+  return(tmp_zwierzeta[1,5]!=0)
+}
+```
+
+```{r wilk}
+przychodzi_wilk<-function(tmp_zwierzeta){
+  if(mamy_psisko(tmp_zwierzeta)){
+    tmp_zwierzeta<-oddaj_do_stada(5,1,tmp_zwierzeta)
+  } else {
+    for(i in c(1:4,7)){
+      tmp_zwierzeta<-oddaj_do_stada(i,tracone_zwierzeta,tmp_zwierzeta)
+    }
+  }
+  
+  return(tmp_zwierzeta)
+}
+```
+
+```{r wilk2}
+poluje_wilk<-function(nakostkach, tmp_zwierzeta){
+  if(nakostkach[8]==1){tmp_zwierzeta<-przychodzi_wilk(tmp_zwierzeta)}
+  return(tmp_zwierzeta)
+}
+```
+
+###Funkcje strategii
+Funkcja "czy_stac_nas" sprawdza, czy mo¿emy kupiæ zwierzê sprzedaj¹c mniejsze zwierzêta. Funkcja "wymiana_na_drozsze" pozwala na sprzeda¿ mniejszych zwierz¹t na wiêksze.
+```{r label strategia}
+czy_stac_nas<-function(nr_zwierzecia, tmp_zwierzeta){ 
+  wartosc_tanszych<-sum(tmp_zwierzeta[1,1:(nr_zwierzecia-1)]*tmp_zwierzeta[2,1:(nr_zwierzecia-1)])
+  if (tmp_zwierzeta[1,1]>0){ 
+    wartosc_tanszych<-wartosc_tanszych-1  #jednego królika chcemy zachowywaæ, 
+  }
+  czy_stac<-wartosc_tanszych>=tmp_zwierzeta[2,nr_zwierzecia]
+  return(czy_stac)
+}
+```
+
+```{r label5,5}
+wymiana_na_drozsze<-function(tmp_zwierzeta){
+  for (i in 6:2){
+    
+    if (tmp_zwierzeta[1,i]==0){         #sprawdzamy, czy mamy i-te zwierze
+      if(czy_stac_nas(nr_zwierzecia=i,tmp_zwierzeta)){
+        tmp_zwierzeta<-dodaj_do_zagrody(nr_zwierzecia=i, liczba=1, tmp_zwierzeta)
+        do_splaty<-zwierzeta[2,i]
+        j<-(i-1)
+        while(do_splaty>0){
+          if (tmp_zwierzeta[1,j]>=1){   #sprzedajemy zwierzêta kolejno od najdro¿szych
+  
+            do_splaty<-(do_splaty-tmp_zwierzeta[2,j]) #sp³acamy wartoœæ (po jednym zwierzêciu)
+            tmp_zwierzeta<-oddaj_do_stada(nr_zwierzecia=j, liczba=1, tmp_zwierzeta)
+          } else j<-(j-1)
+        }
+        break
+      }
+    }
+  }
+  tmp_zwierzeta
+}
+```
+Funkcja "wymiana_na_tansze" pozwala zamieniaæ wiêksze zwierzêta na mniejsze. U¿ywamy jej jedynie na koniec rozgrywki, gdy¿ w naszej strategii staramy siê jak najszybciej zdobyæ du¿e zwierzêta, a nastêpnie, ewentualne nowonarodzone dro¿sze zwierzêta wymieniæ na brakuj¹ce tañsze w jednym ruchu, który w takim przypadku koñczy grê.
+
+```{r label6}
+wymiana_na_tansze<-function(tmp_zwierzeta){
+  for (i in 6:2){   #przechodzimy kolejno od konia do owiec
+    if (tmp_zwierzeta[1,i]>1){   #sprawdzamy, czy mamy wiêcej ni¿ jedno
+      if (prod(tmp_zwierzeta[1,i:6])>0){   #jeœli mamy wszystkie dro¿sze zwierzêta
+        tmp_zwierzeta<-oddaj_do_stada(nr_zwierzecia=i, liczba=1, tmp_zwierzeta)
+        for (j in (i-1):1){
+          tmp_zwierzeta<-dodaj_do_zagrody(nr_zwierzecia=j, liczba=1, tmp_zwierzeta)
+        }
+        break
+      }
+    } 
+  }
+  return(tmp_zwierzeta)
+}
+```
+###W³aœciwy program
+Poni¿ej znajduj¹ siê dwie pêtle, jedna zawarta w drugiej. Obrót pêtli zewnêtrznej odpowiada jednej rozgrywwce, obrót pêtli wewnêtrznej - jednej turze.
+```{r label7}
+liczba_powtorzen <- 10000    #liczba symulacji
+czasy <- vector("integer", liczba_powtorzen)  #wektor d³ugoœci gier
+```
+
+```{r label8}
+for (i in 1:liczba_powtorzen) {
+  zwierzeta <- resetuj_tablice()
+  j <- 0    #zerujemy licznik tur, zaczynamy kolejn¹ grê
+  
+  repeat {
+  j <- j + 1    #kolejna tura
+  
+  #rzut koœcmi przyjmowany przez wektor
+  wektor_kostek <- rzut_koscmi()
+  
+  #rozmnazanie zwierzat/ drapiezniki
+  zwierzeta <- cud_narodzin(wektor_kostek, zwierzeta)
+  zwierzeta <- poluje_wilk(wektor_kostek, zwierzeta)
+  zwierzeta <- poluje_lis(wektor_kostek, zwierzeta)
+  
+  #wymiana
+  
+  zwierzeta <- wymiana_na_tansze(zwierzeta)
+  if (prod(zwierzeta[1, c(1:4, 6)]) > 0)    #sprawdza czy mamy ju¿ wszystkie zwierzeta
+  break
+  
+  zwierzeta <- wymiana_na_drozsze(zwierzeta)
+  if (prod(zwierzeta[1, c(1:4, 6)]) > 0)
+  break
+  }
+  czasy[i] <- j    #zapisanie d³ugoœci gry
+}
+```
+
+#Rozk³ad czasu gry
+```{r statystyki}
+summary(czasy)
+
+```
+
+```{r histogram, echo=FALSE}
+
+hist(czasy, breaks=50, main="Rozk³ad czasu gry", col="lightgreen", xlab="Liczba tur", ylab=NULL)
+  
+```
+
+####Koniec
