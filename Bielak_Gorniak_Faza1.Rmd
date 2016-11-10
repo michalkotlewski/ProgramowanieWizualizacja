@@ -1,0 +1,402 @@
+---
+title: "Faza I"
+author: "Tomasz Bielak, Paweł Górniak"
+date: "10 listopada 2016"
+output: html_document
+---
+
+
+# Implementacja stada
+Tworzymy funkcję tworzącą dwie globalne zmienne opisujące początkową populacja zwierząt w stadzie: 
+**nazwa** - wektor nazw zwierząt
+**stado** - data frame z nazwami i liczebnościami
+
+Stan stada na początku gry:
+60 królików, 
+24 owce, 
+20 świń, 
+12 krów, 
+6 koni,
+4 małe psy, 
+2 duże psy.
+
+```{r}
+f.inicjalizacja_stada<-function(){
+  nazwy<<-c("Królik","Owca","Świnia","Krowa","Koń","Mały pies","Duży pies")
+  liczebnosc<-c(60,24,20,12,6,4,2)
+  stado<<-data.frame(nazwy,liczebnosc)
+}
+```
+
+Uruchamiamy funkcję...
+```{r}
+f.inicjalizacja_stada()
+```
+
+... i sprawdzamy jak wyglądają utworzone przez funkcję zmienne:
+```{r}
+print(nazwy)
+print(stado)
+```
+
+# Implementacja kostek do gry
+Tworzymy funkcję tworzącą dwie globalne zmienne z listą wszystkich zwierząt występujących w świecie Super Farmer (łącznie z Wilkiem i Lisem) oraz wagami definiującymi prawdopodobieństwa wyrzucenia każdego z pól w dalszej części kodu:
+
+```{r}
+f.inicjalizacja_kostek<-function(){
+kostka1<<-data.frame(nazwy=c(nazwy,"Wilk","Lis"),weight=c(6,3,1,1,0,0,0,1,0))
+kostka2<<-data.frame(nazwy=c(nazwy,"Wilk","Lis"),weight=c(6,2,2,0,1,0,0,0,1))
+}
+```
+
+Uruchamiamy funkcję...
+```{r}
+f.inicjalizacja_kostek()
+```
+
+... i sprawdzamy jak wyglądają utworzone przez funkcję zmienne:
+```{r}
+print(kostka1)
+print(kostka2)
+```
+
+# Implementacja tabeli wymian
+
+Tabelę wymian implementujemy w formie macierzy 7x7, w której występują wszystkie zwierzęta niebędące drapieżnikami atakującymi stado.
+```{r}
+f.inicjalizacja_tabeli_wymian<-function(){
+wymiany<<-matrix(
+  c(c(0 ,1/6,0  ,0  ,0  ,0  ,0  ),
+    c(6 ,0  ,1/2,0  ,0  ,1  ,0  ),
+    c(0 ,2  ,0  ,1/3,0  ,0  ,0  ),
+    c(0 ,0  ,3  ,0  ,1/2,0  ,1  ),
+    c(0 ,0  ,0  ,2  ,0  ,0  ,0  ),
+    c(0 ,1  ,0  ,0  ,0  ,0  ,0  ),
+    c(0 ,0  ,0  ,1  ,0  ,0  ,0  )
+  ),ncol=7,byrow=TRUE)
+rownames(wymiany)<<-nazwy
+colnames(wymiany)<<-nazwy
+}
+```
+
+Uruchamiamy funkcję...
+```{r}
+f.inicjalizacja_tabeli_wymian()
+```
+
+... i sprawdzamy jak wygląda utworzona macierz wymian. Każdy wiersz reprezentuje zwierze które **otrzymujemy w wyniku wymiany**, każda kolumna reprezentuje zwierze ktore **oddajemy w celu wymiany** zaś wartości tabeli oznaczają ile sztuk zwierzaka z kolumny trzeba oddać, aby otrzymać **jednego** zwierza z wiersza. Ważne jest to, że wartości mogą być niecałkowite, bo wartości mówią ile sztuk zwierza z kolumny jest równoważne jednemu zwierzowi z wiersza.
+
+```{r}
+print(wymiany)
+```
+
+# Implementacja stad graczy
+
+Tworzymy funkcję, która w zależności od zdefiniowanej liczby graczy tworzy globalne zmienne opisujące liczebność sztuk i par zwierzaków w stadzie. Funkcja troche na wyrost, stworzona zanim zorientowaliśmy się, że gracz ma być tylko jeden:
+```{r}
+f.inicjalizacja_graczy<-function(players=1){
+  for(i in 1:players){
+    assign(paste('gracz', i, sep=''), data.frame(nazwy,liczebnosc=c(0,0,0,0,0,0,0),pary=c(0,0,0,0,0,0,0)),envir = .GlobalEnv)
+  }
+}
+```
+
+Uruchamiamy funkcję...
+```{r}
+f.inicjalizacja_graczy(players=1)
+```
+
+... i sprawdzamy czy gracz 1 ma gdzie trzymać zwierzęta:
+```{r}
+print(gracz1)
+```
+
+# Implementacja losowania kostek
+Tworzymy funkcję, która będzie zwracała dwuelementowy wektor z wynikiem losowania na pierwszej kostce i na drugiej kostce. Losowanie implementujemy za pomocą funkcji __sample__ podając jej wektor nazw (parametr 1) jako zbiór z którego losujemy 1 element (parametr 2), ze zwracaniem (parametr 3) określając wagi definiujące prawdopodobieństwo wylosowania zwierzaka (parametr 4).
+
+```{r}
+f.losowanie<-function(){
+wynik<<-c(sample(as.character(kostka1[[1]]),1,TRUE,prob=kostka1[[2]]),sample(as.character(kostka2[[1]]),1,TRUE,prob=kostka2[[2]]))
+return(wynik)
+}
+```
+
+Przy każdym uruchomieniu kostki otrzymujemy inne wyniki:
+```{r}
+f.losowanie()
+f.losowanie()
+f.losowanie()
+f.losowanie()
+```
+
+# Implementacja strat po wylosowaniu drapieżników
+Funkcja zwraca wektor ze zwierzakami, które podlegają zerowaniu przy wylosowaniu danego drapieżnika:
+```{r}
+#definicja w formie listy zwierząt podlegających zerowaniu
+f.drapiezniki<-function(co_wylosowalem){
+  if(co_wylosowalem=="Wilk"){
+    return(c("Królik","Owca","Świnia","Krowa","Duży pies"))
+  }else{
+   return(c("Królik"))
+  }
+}
+```
+
+Uruchamiamy funkcję dla obu drapieżników:
+```{r}
+f.drapiezniki("Lis")
+f.drapiezniki("Wilk")
+```
+
+
+#Transfery między stadem a graczem i na odwrót
+Funkcja ta bierze jako argumety: nazwe zwierzaka, który jest przedmiotem wymiany, postulowaną ilość oraz kierunek wymiany (Gracz/Stado): 
+```{r}
+f.transfer<-function(zwierze="Królik",ilosc,kierunek){
+  
+  #określam który wiersz w data frame to zwierze
+  i=which(gracz1[,1]==zwierze)
+  
+  #sprawdzam ile zwierzaka ma gracz
+  aktualny_stan_zwierzaka<-gracz1[i,2]
+  
+  #sprawdzam ile zwierzaka jest w stadzie
+  aktualny_stan_zwierzaka_w_stadzie<-stado[i,2]
+  
+  if(kierunek=="Gracz"){
+    
+    #określam ile zwierzaka moge przenieść ze stada
+    transfer<-min(ilosc,aktualny_stan_zwierzaka_w_stadzie)
+    
+    #aktualizuję stan zwierząt gracza
+    gracz1[i,2]<<-aktualny_stan_zwierzaka+transfer
+    
+    #aktualizuję stan par zwierząt stada
+    gracz1[,3]<<-floor(gracz1[,2]/2)
+    
+    #aktualizuję stan stada
+    stado[i,2]<<-aktualny_stan_zwierzaka_w_stadzie-transfer
+  }else{
+    
+    #określam ile zwierzaka moge przenieść ze stada
+    transfer<-min(ilosc,aktualny_stan_zwierzaka)
+    
+    #aktualizuję stan stada
+    stado[i,2]<<-aktualny_stan_zwierzaka_w_stadzie+transfer    
+
+    #aktualizuję stan zwierząt gracza
+    gracz1[i,2]<<-aktualny_stan_zwierzaka-transfer
+
+    #aktualizuję stan par zwierząt stada
+    gracz1[,3]<<-floor(gracz1[,2]/2)
+    
+  }
+  
+}
+```
+
+#Zmiany stanu stada gracza po losowaniu
+Efekt rzutu kostką na stan stada losującego gracza. Dokładne działanie kodu opisane w komentarzach
+```{r}
+f.update_stanu_stada<-function(wynik){
+  
+  if((wynik[1]!="Wilk") & (wynik[1]!="Lis") & (wynik[2]!="Wilk") & (wynik[2]!="Lis")){
+      if (wynik[1]==wynik[2]){
+        
+        #Dodanie jednego zwierzaka dla którego wystąpił remis
+        f.transfer(zwierze=wynik[1],ilosc=1,kierunek="Gracz")
+        
+      }else{
+        
+        #Dodanie zwierzaków z pierwszego losowania w liczbie równej liczbie par
+        ile_par_1=gracz1[gracz1[,1]==wynik[1],3]
+        f.transfer(wynik[1],ile_par_1,"Gracz")      
+
+        #Dodanie zwierzaków z drugiego losowania w liczbie równej liczbie par
+        ile_par_2=gracz1[gracz1[,1]==wynik[2],3]
+        f.transfer(wynik[2],ile_par_2,"Gracz")  
+
+        #Update kolumny z liczbą par zwierzaków gracza
+        gracz1[,3]<<-round(gracz1[,2]/2,0)
+        
+      }
+  }
+  
+  #Zerowanie zwierząt gdy wylosujemy wilka
+  if(wynik[1]=="Wilk" | wynik[2]=="Wilk"){
+    for(i in 1:nrow(gracz1)) {
+      if(gracz1[7,1]==0){
+        
+        #Sytuacja gdy nie mamy dużego psa
+        if(gracz1[i,1] %in% f.drapiezniki("Wilk")){
+          stado[i,2]<<-stado[i,2]+gracz1[i,2]
+          gracz1[i,2]<<-0
+          gracz1[i,3]<<-0
+          gracz1[,3]<<-round(gracz1[,2]/2,0)
+        }
+        
+      }else{
+        
+        #Sytuacja gdy mamy dużego psa
+        stado[7,2]<<-stado[7,2]+gracz1[7,2]
+        gracz1[7,2]<<-0
+        gracz1[,3]<<-round(gracz1[,2]/2,0)
+        
+      }
+    }
+  }
+  
+  #Zerowanie zwierząt gdy wylosujemy lisa
+  if(wynik[1]=="Lis" | wynik[2]=="Lis"){
+    for(i in 1:nrow(gracz1)) {
+      if(gracz1[6,1]==0){
+        
+        #Sytuacja gdy nie mamy małego psa
+        if(gracz1[i,1] %in% f.drapiezniki("Lis")){
+          stado[i,2]<<-stado[i,2]+gracz1[i,2]
+          gracz1[i,2]<<-0
+          gracz1[i,3]<<-0
+          gracz1[,3]<<-round(gracz1[,2]/2,0)
+        }
+        
+      }else{
+        
+        #Sytuacja gdy mamy małego psa
+        stado[6,2]<<-stado[6,2]+gracz1[6,2]
+        gracz1[6,2]<<-0
+        gracz1[,3]<<-round(gracz1[,2]/2,0)
+        
+      }
+    }
+  }
+
+}
+
+```
+
+#Wymiany zwierząt według strategii gracza
+
+```{r}
+f.zastosuj_strategie_losowa<-function(){
+  
+  #Budujemy macierz inykatorów, które wskażą które wymiany są dopuszczalne
+  wymiany_dopuszczalne<<-wymiany
+  for(i in 1:nrow(wymiany)){
+    for(j in 1:ncol(wymiany)){
+      if(wymiany[i,j]==0){
+        wymiany_dopuszczalne[i,j]<-0
+      }else{
+        zwierze_po<-rownames(wymiany)[i]
+        zwierze_przed<-colnames(wymiany)[j]
+        if((wymiany[i,j]==floor(wymiany[i,j])) & (gracz1[j,2]>=wymiany[i,j]) & stado[i,2]>=1){
+          wymiany_dopuszczalne[i,j]<-1
+        }else if((wymiany[i,j]!=floor(wymiany[i,j])) & (gracz1[j,2]>=1) & stado[i,2]>=(wymiany[i,j])^(-1)){
+          wymiany_dopuszczalne[i,j]<-1 
+        }else{
+          wymiany_dopuszczalne[i,j]<-0
+        }
+      }
+    }
+  }
+
+  if(any(wymiany_dopuszczalne!=0)){
+  
+
+#Tabela przeliczników wymian w formie listy + info czy dopuszczalne
+  lista_przelicznikow<<-data.frame(
+     expand.grid(co_dostaje=rownames(wymiany),ile_dostaje=1,co_oddaje=colnames(wymiany)),
+     ile_oddaje=as.vector(wymiany),czy_dopuszczalne=as.vector(wymiany_dopuszczalne),ile_mam=as.vector(tcrossprod(rep(1,7),gracz1[,2]))
+  )
+  
+#Lista przeliczników zostaje przekształcona tak, aby usunąć ułamki
+lista_przelicznikow$ile_dostaje<-ifelse(floor(lista_przelicznikow$ile_oddaje)==0 & lista_przelicznikow$ile_oddaje!=0,lista_przelicznikow$ile_dostaje/lista_przelicznikow$ile_oddaje,lista_przelicznikow$ile_dostaje)
+lista_przelicznikow$ile_oddaje<-ifelse(floor(lista_przelicznikow$ile_oddaje)==0 & lista_przelicznikow$ile_oddaje!=0,1,lista_przelicznikow$ile_oddaje)
+
+if(nrow(lista_przelicznikow[lista_przelicznikow$czy_dopuszczalne==1 & lista_przelicznikow$ile_mam!=0,])!=0){
+mozliwosci<<-lista_przelicznikow[lista_przelicznikow$czy_dopuszczalne==1 & lista_przelicznikow$ile_mam!=0,]
+}else{
+mozliwosci<<-lista_przelicznikow[lista_przelicznikow$czy_dopuszczalne==1,]
+}
+#Reguła wyboru spośród dopuszczalnych możliwości
+wybor<<-mozliwosci[sample(nrow(mozliwosci), 1), ]
+
+f.transfer(zwierze=wybor[1,1],ilosc=wybor[1,2],kierunek="Gracz")
+f.transfer(zwierze=wybor[1,3],ilosc=wybor[1,4],kierunek="Stado")
+}
+
+}
+```
+
+#Analiza osiągniętych wyników
+Statystyki opisowe dla zmiennej czasu gry, wykres pojedynczych wyników gry oraz wykres średniej po n partiach
+```{r}
+f.statystyki<-function(historia){
+summary(historia)
+plot(historia, main="Wyniki poszczególnych symulacji",
+  	xlab="Liczba symulacji (n)", ylab="Liczba rund w grze")
+plot(cumsum(historia) / seq_along(historia),main="Średnia z n symulacji",
+  	xlab="Liczba symulacji (n)", ylab="Liczba rund w grze ")
+}
+```
+
+#Symulacja gry
+Liczba symulacji to jedyny parametr, domyślnie wartość 100.
+```{r}
+f.symuluj<-function(powt=100){
+  historia<<-numeric()
+  f.inicjalizacja_stada()
+  f.inicjalizacja_kostek()
+  f.inicjalizacja_tabeli_wymian()
+  #100 symulacji
+  for(i in 1:powt){
+    
+    #zerujemy stan gry
+    f.inicjalizacja_stada()
+    f.inicjalizacja_graczy()
+    
+    #zerujemy licznik liczby rund
+    runda<-0
+    
+    repeat{
+      
+      #inkrementujemy licznik rund
+      runda<-runda+1
+      
+      #losujemy kostkami i uaktualniamy stan stad
+      f.update_stanu_stada(f.losowanie())
+      
+      #dokonujemy wymian według strategii
+      f.zastosuj_strategie_losowa()
+      
+      #sprawdzamy czy warunek stopu spełniony
+      if(all(gracz1[,2]>=c(1,1,1,1,1,1,1))){
+        
+        #zapisujemy wynik partii
+        historia<<-c(historia,runda)
+        
+        #przerywamy pętlę
+        break
+      }
+    }
+  }
+  
+  #statystyki gier
+  return(historia)
+}
+```
+
+Uruchamiamy symulację
+```{r}
+historia<-f.symuluj(10000)
+```
+
+Statystyki opisowe
+```{r}
+summary(historia)
+```
+
+Kilka wykresów
+```{r}
+f.statystyki(historia)
+```
+
