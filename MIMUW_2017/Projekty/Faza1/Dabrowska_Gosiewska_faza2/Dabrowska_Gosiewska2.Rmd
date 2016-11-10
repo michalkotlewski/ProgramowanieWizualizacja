@@ -1,0 +1,347 @@
+---
+title: "SuperFarmer - symulacja rozgrywki jednoosobowej"
+author: 
+- Aleksandra Dąbrowska
+- Alicja Gosiewska
+output:
+  html_document:
+    toc: true
+    toc_depth: 3
+    number_sections: true
+    toc_float: true
+    theme: readable
+    css: style.css
+---
+
+#Rozważany problem
+Zajmujemy sią symulacją gry "SuperFarmer". 
+
+Gracz jest hodowcą zwierząt i pragnie zostać superfarmerem. Gracz zwiększa swój zysk rozmnażając zwierzęta. Może zamieniać wyhodowane zwierzęta na inne, jeąli uzna, że to mu się opłaca. Aby zwyciężyć, musi uzyskać stado złożone, co najmniej z konia, krowy, świni, owcy i królika. Przeszkodą w zdobyciu wszytkich zwierząt są pojawiające się w grze wilki i lisy, które mogą osłabić stado gracza. Początkowo nasz gracz nie ma żadnych zwierząt. Aby zdobyć zwierzęta rzuca dwiema dwunastościennymi kośćmi.
+
+# Opis implementacji gry
+Nasz program składa się z 6 funkcji związanych z mechaniką gry, 3 funkcji dotyczących strategii gracza oraz dwóch funkcji rozgrywających odpowiednio jedną lub n partii. Zarówno początkowe stany stada głównego i stada gracza jak i strategia są sparametryzowane i mogą być w prosty sposób modfikowane. 
+
+#Funkcje związane z mechaniką gry
+
+Funkcja tworząca struktury gry
+
+```{r setup}
+przed_wyruszeniem_w_droge_nalezy_zebrac_druzyne <- function(stan_stada, stan_stada_gracza, wyzerowana_tabela){
+zwierzeta <- c("krolik","owca","swinia", "krowa", "kon", "maly_pies","duzy_pies")
+stado <- stan_stada
+names(stado) <- zwierzeta
+
+stado_g1 <- stan_stada_gracza
+names(stado_g1) <- zwierzeta
+
+tabela_zmian <- wyzerowana_tabela
+names(tabela_zmian) <- zwierzeta
+
+result <- list(stado,stado_g1,tabela_zmian)
+return(result)
+}
+```
+
+Funkcja symulująca rzut kośćmi
+
+```{r}
+rzut <- function(){
+d1 <- c("krolik", "krolik", "krolik", "krolik", "krolik", "krolik", "owca", "owca", "owca", "swinia", "krowa", "wilk")
+d2 <- c("krolik", "krolik", "krolik", "krolik", "krolik", "krolik", "owca", "owca", "swinia", "swinia", "kon", "lis")
+
+return(c(sample(d1,1),sample(d2,1)))
+}
+```
+
+Funkcja zwracająca nowe stany stada głównego i stada gracza w zależności od wyniku rzutu kośćmi
+
+```{r}
+przebieg_rzutu_g1 <- function(tabela_zmian, stado, stado_g1, wynik_rzutu){
+    if(wynik_rzutu[1] == wynik_rzutu[2]) 
+      tabela_zmian[[wynik_rzutu[1]]] <- floor(2+stado_g1[[wynik_rzutu[1]]]/2) else{
+    if(wynik_rzutu[1]=="wilk"){
+    ifelse(stado_g1[["duzy_pies"]] > 0, tabela_zmian[["duzy_pies"]] <- -1 , replace(tabela_zmian, tabela_zmian[c(1,2,3,4)],-tabela_zmian[c(1,2,3,4)]))
+    }else if(wynik_rzutu[2]=="lis"){
+      ifelse(stado_g1[["maly_pies"]] > 0, tabela_zmian[["maly_pies"]] <- -1 ,tabela_zmian[["krolik"]] <- -stado_g1[["krolik"]])
+    }else{
+      tabela_zmian[[wynik_rzutu[2]]] <- floor((1+stado_g1[[wynik_rzutu[2]]])/2)
+      tabela_zmian[[wynik_rzutu[1]]] <- floor((1+stado_g1[[wynik_rzutu[1]]])/2)
+  }
+  }
+  for(i in range(1:5))   tabela_zmian[[i]] <- ifelse(stado[[i]]-tabela_zmian[[i]]<=0,stado[[i]],tabela_zmian[[i]])
+  return(tabela_zmian)
+  
+}
+```
+
+Funkcja zwracająca wartość zwierzęcia wyrażoną w królikach
+
+```{r}
+
+wartosc <- function(zwierze){
+  wart <-switch(zwierze,
+                "krolik" = 1,
+                "owca" = 6,
+                "swinia" = 12,
+                "krowa" =  36,
+                "kon" = 72,
+                "maly_pies" = 6,
+                "duzy_pies" = 36)
+
+  return(wart)
+}
+
+```
+
+Funkcja dokonująca wymiany bazując na wartościach podanych w zmiennej tabela
+
+```{r}
+dokonanie_wymian <- function(stado, stado_g1,tabela){
+    stado_g1 <- stado_g1 + tabela
+    stado <- stado - tabela
+    return(list(stado_g1, stado))
+}
+
+```
+
+Funkcja sprawdzająca, czy tabela spełnia warunki wygranej w grze
+
+```{r}
+czy_wygrana <- function(warunki_wygranej,table){
+  for(i in 1:7){
+    if(table[[i]]<warunki_wygranej[[i]]) return("Probuj dalej :)")
+  }
+  return("Jestes zwyciezca!")
+}
+
+```
+
+#Funkcje związane ze strategią gracza
+
+Nasza strategia korzysta jedynie z wymiany kilku mniejszych zwierząt na jedno większe.
+
+Wyżej wspomnianą wymianę realizuje następująca funkcja:
+
+```{r}
+kilka_na_jedno <- function(tabela_zmian,tabela_co, na_co){
+        cena <- wartosc(na_co)
+        kolejnosc <- c("krowa","swinia","owca","krolik","maly_pies","duzy_pies")
+        
+        for (i in kolejnosc){
+          if(tabela_co[[i]]>0 && wartosc(i)<=cena && cena >0){
+          tabela_zmian[[i]] <- -min(floor(cena/wartosc(i)), tabela_co[[i]])
+          cena <- cena + tabela_zmian[[i]]*wartosc(i)
+          }
+        }
+        tabela_zmian[[na_co]] <- 1
+        ifelse(cena>0, return(FALSE), return(tabela_zmian))
+}
+```
+
+Wykorzystujemy również funkcję sprawdzającą wartość stada wyrażoną w królikach
+
+```{r}
+wyciag_z_konta <- function(tabela){
+  saldo <- 0
+  for(i in 1:length(tabela)){
+    saldo <- saldo + tabela[[i]]*wartosc(names(tabela)[[i]])
+  }
+  return(saldo)
+}
+
+```
+
+##Funkcja strategii gry
+
+Strategia gracza moze być modyfikowana przy użyciu następujących parametrów:
+
+kroliki - minimalna ilość królików, którą gracz zawsze będzie chciał zachować w swoim stadzie
+
+owce - minimalna ilość owiec, którą gracz zawsze będzie chciał zachować w swoim stadzie
+
+duze_psy - minimalna ilość dużych psów, którą gracz zawsze będzie chciał zachować w swoim stadzie
+
+male_psy - minimalna ilość małych psów, którą gracz zawsze będzie chciał zachować w swoim stadzie
+
+ 
+```{r}
+
+strategia_wymian <- function(tabela_zmian,stado,stado_g1,kroliki, owce, duze_psy, male_psy){
+  wymiana<-tabela_zmian
+  if (stado_g1[["kon"]] >= 2){
+    wymiana[1:7]<-c(1,1,1,1,-1,0,0)
+    return(wymiana)
+  }
+  if((wyciag_z_konta(stado_g1[c(1,2,3,4,6,7)])>=72)&&(stado_g1[["kon"]]==1)){
+    wymiana <- kilka_na_jedno(tabela_zmian,stado_g1,"kon") 
+    return(wymiana)
+  }
+  damy<-c( max(stado_g1[["krolik"]]-kroliki,0),max(stado_g1[["owca"]]-owce,0),0,0,0,max(stado_g1[["maly_pies"]]-male_psy,0),max(stado_g1[["duzy_pies"]]-duze_psy))
+  names(damy) <-  c("krolik","owca","swinia", "krowa", "kon", "maly_pies","duzy_pies")
+  for(zw in c("kon","maly_pies","duzy_pies","owca")){
+    wymiana <-kilka_na_jedno(tabela_zmian,damy,zw)
+    param = switch(zw,"kon" = 10,
+                      "maly_pies" = male_psy,
+                      "duzy_pies" = duze_psy,
+                      "owca" = owce)
+    if(class(wymiana)=="numeric" && stado_g1[[zw]]< param)  return(wymiana)
+  }
+  wymiana[1:7]<-c(0,0,0,0,0,0,0)
+  return(wymiana)
+}
+
+```
+
+#Funkcje rozgrywające grę
+
+```{r}
+gra <- function(stan_stada,stan_stada_gracza,wyzerowana_tabela,kroliki, owce, duze_psy, male_psy,warunki_wygranej){
+  licznik <- 0
+  struktury <-przed_wyruszeniem_w_droge_nalezy_zebrac_druzyne(stan_stada,stan_stada_gracza,wyzerowana_tabela)
+  stado <- struktury[[1]]
+  stado_g1 <- struktury[[2]]
+  tabela_zmian <- struktury[[3]]
+  while (czy_wygrana(warunki_wygranej,stado_g1) != "Jestes zwyciezca!"){
+  wymiana<-strategia_wymian(tabela_zmian,stado, stado_g1,kroliki, owce, duze_psy, male_psy)
+  wymiany <- dokonanie_wymian(stado, stado_g1,wymiana)
+  stado_g1 <- wymiany[[1]]
+  stado <- wymiany[[2]]
+  efekt_rzutu <- przebieg_rzutu_g1(tabela_zmian,stado,stado_g1,rzut())
+  licznik <- licznik+1
+  z_rzutu <- dokonanie_wymian(stado,stado_g1,efekt_rzutu)
+  stado_g1 <- z_rzutu[[1]]
+  stado <- z_rzutu[[2]]
+  }
+  return(licznik)
+}
+
+
+#dla n partii
+partie <- function(n,stan_stada,stan_stada_gracza,wyzerowana_tabela,kroliki, owce, duze_psy, male_psy,warunki_wygranej){
+  czasy <- data.frame()
+  for (i in 1:n){
+    czasy[i,1] <-gra(stan_stada,stan_stada_gracza,wyzerowana_tabela,kroliki, owce, duze_psy, male_psy,warunki_wygranej)
+  }
+    colnames(czasy)[1] <- "Czas_gry"
+  return(czasy)
+}
+
+```
+
+#Wywołanie gry dla przykładowych parametrów
+
+```{r, eval = TRUE}
+stan_stada <- c(60,24,20,12,6,4,2)
+stan_stada_gracza <- c(0,0,0,0,0,0,0)
+wyzerowana_tabela <- c(0,0,0,0,0,0,0)
+warunki_wygranej <- c(1,1,1,1,1,0,0)
+names(warunki_wygranej)<-c("krolik","owca","swinia", "krowa", "kon", "maly_pies","duzy_pies")
+
+czasy_3_3_0_0 <- partie(10000,stan_stada,stan_stada_gracza,wyzerowana_tabela,3,3,0,0,warunki_wygranej)
+
+
+```
+#Rozkład czasu gry dla przykładowych parametrów
+
+```{r, message=FALSE}
+library(ggplot2)
+
+p<- ggplot(czasy_3_3_0_0,aes(czasy_3_3_0_0))+
+    geom_histogram(binwidth = 1, col="black",fill="#9999FF")+
+    theme(axis.text = element_text(size = 14),
+    panel.grid.major = element_line(colour = "grey40"),
+    panel.grid.minor = element_blank(),
+    panel.background = element_rect(fill = "white"),
+    axis.title=element_text(size=14),
+    axis.title.y=element_text(angle=0),
+    plot.title=element_text(size=20))+
+    xlab("Czas trwania gry")+
+    ylab("Liczba gier")+
+    labs(title="Rozkład czasu gry")
+
+
+library(plotly)
+f <- list(
+  family = "Helvetica",
+  size = 20,
+  color = "black")
+gg <- ggplotly(p)
+
+p %>% ggplotly(originalData = FALSE)
+```
+ 
+ 
+```{r,message=FALSE}
+#dla wszystkich kombinacji parametrow dostajemy sredni czas trwania gry
+
+load("dane_parametry.rda")
+
+library(dplyr)
+dane_pogrupowane <- dane_parametry%>%
+                    group_by(kroliki, owce, male_psy,duze_psy)%>%
+                    summarise(Srednia_dla_strategii=mean(Czas_gry),
+                              Odchylenie_stand_dla_strategii=sd(Czas_gry))
+
+dane_pogrupowane$strategia <- paste("kroliki:",dane_pogrupowane$kroliki," owce:",dane_pogrupowane$owce," male psy:", dane_pogrupowane$male_psy," duze psy:", dane_pogrupowane$duze_psy, sep ="")
+
+
+library(plotly)
+
+plot_ly(dane_pogrupowane,x = ~Srednia_dla_strategii, y = ~Odchylenie_stand_dla_strategii, color = ~as.factor(male_psy), type = 'scatter', mode = "markers", text = ~strategia) %>%
+  layout(title = "Scatter plot ze wzgledu na ilosc malych psow" , titlefont=f) 
+
+```
+
+
+
+#Wykresy skrzypcowe dla różnych minimalnych wartości królików
+Przy bliższym przyjrzeniu się strategiom o najniższej medianie i odchyleniu standardowym zauważymy, że są tam jedynie strategie, w którcy parametry: male_psy oraz duze_psy były równe 0. Przyjrzyjmy się więc bliżej strategiom jedynie ze względu na króliki. Do zobrazowania tych strategii użyłyśmy wykresów skrzypcowych.
+
+Kropki oznaczają średnie odpowiednich strategii.
+
+```{r, warning=FALSE}
+dane_pogrupowane_kroliki <- dane_parametry%>%
+                    group_by(kroliki)
+
+ggplot(dane_pogrupowane_kroliki,aes(x= kroliki,y = Czas_gry, fill = kroliki)) + geom_violin(trim = TRUE) + ylim(c(0,75)) + stat_summary(fun.y=mean, geom="point", size=2)+theme(axis.text = element_text(size = 14),
+    panel.grid.major = element_line(colour = "grey40"),
+    panel.grid.minor = element_blank(),
+    panel.background = element_rect(fill = "white"),
+    axis.title=element_text(size=14),
+    axis.title.y=element_text(angle=0),
+    plot.title=element_text(size=20))+
+    xlab("Parametr oznaczający pożądaną liczbę królików")+
+    ylab("Czas gry, \n kropka oznacza średnią")+
+    labs(title="Rozkład czasu gry,\n w zależności od parametru kroliki")
+
+```
+
+Jak możemy zauważyć różnice między strategiami są niewielkie
+
+
+#ProfileRRRRR
+Bardzo przydatnym narzędziem, które odkryłyśmy podczas przygotowań do tej fazy projektu jest profiler. Analizuje on czas wykonania funkcji i zwraca on watości wykonywania poszczególnych operacji. Początkowo nasz kod w wielu miejcach operował ramkami danych (data.frame). Jak się okazało znacząco wydłużają one czas wykonywania kodu. Zamiana ich na wektory pozwoliła skrócić czas wywołania 100 partii gier aż 24 krotnie.
+
+Poniżej przedstawiamy wyniki działania profilera dla starej oraz nowej wersji kodu:
+
+```{r,eval=TRUE}
+library(knitr)
+load("profil.stary.rda")
+kable(head(profil_stary[,c(1,3)]),caption="Czasy wywołania funkcji przy używaniu data.frame")
+
+```
+
+Oraz dla nowej wersji:
+```{r, eval= FALSE}
+Rprof("partie.out")
+y <- partie(100,stan_stada,stan_stada_gracza, wyzerowana_tabela,3,3,0,0)  # this is the function to profile
+Rprof(NULL)
+profil <- summaryRprof("partie.out")
+profil_nowy <-as.data.frame(profil$by.total)
+```
+
+```{r, eval=TRUE,echo=FALSE}
+load("profil.nowy.rda")
+kable(head(profil_nowy[,c(1,3)]),caption = "Czasy wywołania funkcji po zmianie na wektory")
+
+```

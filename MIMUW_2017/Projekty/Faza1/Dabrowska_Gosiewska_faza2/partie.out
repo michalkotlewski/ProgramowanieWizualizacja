@@ -1,0 +1,13 @@
+sample.interval=20000
+"getExportedValue" "::" "str.default" "str" "doTryCatch" "tryCatchOne" "tryCatchList" "tryCatch" "try" "eval" "eval" "withVisible" "evalVis" "capture.output" "eval" "doTryCatch" "tryCatchOne" "tryCatchList" "tryCatch" ".rs.withTimeLimit" ".rs.valueFromStr" "doTryCatch" "tryCatchOne" "tryCatchList" "tryCatch" ".rs.valueAsString" "<Anonymous>" 
+".deparseOpts" "deparse" "mode" "match" "%in%" "deparse" "FUN" "lapply" ".rs.recordTraceback" "<Anonymous>" "czy_wygrana" "gra" "partie" 
+"grepl" "<Anonymous>" 
+"getExportedValue" "::" 
+"lapply" "<Anonymous>" 
+"gzfile" "readRDS" "FUN" "lapply" "find.package" "system.file" "FUN" "vapply" ".rs.isPackageInstalled" "<Anonymous>" 
+".rs.getSignature" "doTryCatch" "tryCatchOne" "tryCatchList" "tryCatch" ".rs.valueAsString" "<Anonymous>" 
+".rs.valueAsString" "<Anonymous>" 
+"%in%" "deparse" "textConnection" "capture.output" ".rs.getSignature" "doTryCatch" "tryCatchOne" "tryCatchList" "tryCatch" ".rs.valueAsString" "<Anonymous>" 
+"paste0" "str.default" "str" "doTryCatch" "tryCatchOne" "tryCatchList" "tryCatch" "try" "eval" "eval" "withVisible" "evalVis" "capture.output" "eval" "doTryCatch" "tryCatchOne" "tryCatchList" "tryCatch" ".rs.withTimeLimit" ".rs.valueFromStr" "doTryCatch" "tryCatchOne" "tryCatchList" "tryCatch" ".rs.valueDescription" "<Anonymous>" 
+"pmatch" ".deparseOpts" "deparse" "mode" "capture.output" ".rs.getSignature" "doTryCatch" "tryCatchOne" "tryCatchList" "tryCatch" ".rs.valueAsString" "<Anonymous>" 
+"c" "pmatch" ".deparseOpts" "deparse" "textConnection" "capture.output" "eval" "doTryCatch" "tryCatchOne" "tryCatchList" "tryCatch" ".rs.withTimeLimit" ".rs.valueFromStr" "doTryCatch" "tryCatchOne" "tryCatchList" "tryCatch" ".rs.valueAsString" "<Anonymous>" 
