@@ -1,0 +1,614 @@
+---
+title: "Symulacja i wizualizacja strategii w grze SuperFarmer -  faza 2"
+author: "Agnieszka Ciepielewska i Ewelina Karbowiak"
+date: "9 listopada 2016"
+output: html_document
+---
+
+
+**Abstract** Celem pierwszej fazy projektu dotycz?cego symulacji i wizualizacji strategii w grze SuperFarmer jest stworzenie strategii gry i oszacowanie jaki jest rozk?ad czasu gry przyj?tej strategii.
+
+##Strategia gry
+Nasza strategia gry opiera si? na uczeniu maszynowym. W pierwszej kolejno?ci stworzy?y?my kod, kt?ry gra w gr? SuperFarmer czysto losowo i dodatkowo skorzysta?y?my z dw?ch strategii zaproponowanych przez naszych koleg?w. 
+
+* Strategia I - Domink Ambroziak, Anna Dymowska, Adam Kr?l  [kliknij po wi?cej informacji o strategii](https://github.com/pbiecek/ProgramowanieWizualizacja/blob/master/MIMUW_2017/Projekty/Faza1/Faza1-Amb%2CDym%2CKrol.Rmd)
+
+* Strategia II - Marianna Dzik, Piotr Radzi?ski  [kliknij po wi?cej informacji o strategii](https://github.com/pbiecek/ProgramowanieWizualizacja/blob/master/MIMUW_2017/Projekty/Faza1/Superfarmer_M_Dzik_P_Radzinski.html)
+
+W kolejnym kroku wygenerowa?y?my du?? liczb? danych z wielu tur gier losowych, a nast?pnie za pomoc? modelu **random forest** zbudowa?y?my model uczenia maszynowego. Dzi?ki tej metodzie dla danego stanu stada i mo?liwych ruch?w przewidujemy, kt?rym ruchem najszybciej wygramy.
+
+##Random forest
+
+**Drzewo decyzyjne** jest to metoda wspomagaj?ca proces decyzyjny. Sk?ada si? z w?z??w - decyzji i stan?w natury oraz ga??zi, czyli mo?liwych wariant?w. Drzewa decyzyjne stosuje si? w celu rozwi?zania problemu decyzyjnego lub stworzenia jego planu. W uczeniu maszynowym z ich pomoc? zdobywa si? wiedz? z zestawu przyk?ad?w.
+
+**Las losowy** jest zbiorem drzew decyzyjnych.  Ka?de drzewo decyzyjne zwraca decyzj? dotycz?c? danej obserwacji. S? one traktowane jako g?osy. Las losowy jako wynik zwraca decyzj?, kt?ra otrzyma?a najwi?cej g?os?w.
+
+>randomForest(x, y=NULL, xtest=NULL, ytest=NULL, ntree=500, mtry)
+
+* x - macierz opisuj?ca zbi?r ucz?cy
+* y - wektor warto?ci zmiennej obja?nianej dla zbioru ucz?cego
+* xtest - macierz opisuj?ca zbi?r ucz?cy, zawieraj?ca dane dla zbioru testowego
+* ytest - wektor warto?ci zmiennej obja?nianej dla zbioru testowego
+* ntree - liczba drzew 
+* mtry - liczba zmiennych wybieranych losowo do stworzenia drzewa (domy?lnie mtry=if (!is.null(y) && !is.factor(y))max(floor(ncol(x)/3), 1) else floor(sqrt(ncol(x)))))
+
+##Rozk?ad czasu gry
+
+```{r message=FALSE, warning=FALSE}
+library("plotly")
+library("reshape2")
+library("ggplot2")
+library("knitr")
+```
+
+>Wariant losowy
+
+```{r message=FALSE, warning=FALSE}
+load("C:/Users/Key/Downloads/random.resulst.rda")
+head(random.resulst)
+dane0<-melt(random.resulst)
+g <- ggplot(dane0,aes(x=value))
+g <- g + geom_histogram(aes(fill=..count..),col="red",breaks=seq(0,600,6))+
+  scale_fill_gradient("Count", low = "green", high = "red")
+g<-g+labs(list(title="Rozk?ad czasu gry - wariant losowy", x="Czas gry"))
+g
+```
+
+> Przetrenowanie modelu
+
+```{r message=FALSE, warning=FALSE}
+load("C:/Users/Key/Downloads/forest.result1.rda")
+dane1<-melt(forest.result1)
+dane0$group <- 'Wariant_losowy'
+dane1$group <- 'forest.result1'
+dane01 <- rbind(dane0, dane1)
+p <- ggplot(dane01, aes(value, group=group,col=group, fill=group)) +
+  geom_histogram(alpha=0.35, aes(fill=group),col="black", breaks=seq(0,600,6),  position = 'identity')
+p<-p+labs(list(title="Rozk?ad czasu gry - wyniki przyk?adowego przetrenowania modelu ", x="Czas gry"))
+p
+
+```
+
+> Por?wnanie
+
+Analiza boxplot?w potwierdza, ?e przyj?ta przez nas strategia, skraca czas przeprowadzania gry - obserwujemy zmniejszenie wszystkich podstawowych statystyk w por?wnaniu do wariantu losowego, jednak?e nie uzyska?y?my zadawalaj?cych wynik?w z przetrenowania tego modelu 40 razy.
+
+```{r message=FALSE, warning=FALSE}
+load("C:/Users/Key/Downloads/last.results.rda")
+load("C:/Users/Key/Downloads/forest.result2.rda")
+load("C:/Users/Key/Downloads/forest.result3.rda")
+Wyniki<-rep(c("random.result","forest.result1" ,"forest.result2","forest.result3"), each=10000 )
+Czas_gry<-c(random.resulst,forest.result1,forest.result2,forest.result3)
+b<-data.frame(Wyniki,Czas_gry)
+c<-ggplot(b, aes(x=Wyniki, y = log(Czas_gry,10), fill=Wyniki)) + 
+  geom_boxplot()+
+  stat_summary(fun.y=mean, geom="point", shape=1, size=1)
+ggplotly()
+podsumowanie.faza1 <- data.frame(cbind(summary(random.resulst),summary(forest.result1),summary(forest.result2),summary(forest.result3)))
+names(podsumowanie.faza1)[1]<-paste("Wariant_losowy")
+names(podsumowanie.faza1)[2]<-paste("Iprzetrenowanie")
+names(podsumowanie.faza1)[3]<-paste("IIprzetrenowania")
+names(podsumowanie.faza1)[4]<-paste("IIIprzetrenowania")
+kable(podsumowanie.faza1)
+
+boxplot(last.results,  main = "Czasy gry poszczeg?lnych przetrenowa?", xlab = "Nr przetrenowania",ylab = "czas gry", ylim = c(0, 150))
+podsumowanie<-data.frame(cbind(summary(random.resulst)))
+names(podsumowanie)[1]<-paste("losowy")
+for (i in 2:41){
+  podsumowanie[[i]]  <- summary(last.results[[i-1]])
+  names(podsumowanie)[i]<-paste("nr",i-1)
+}
+kable(podsumowanie[,c(1,4,20,40)])
+```
+
+##Kod
+
+>Wczytanie potrzebnych pakiet?w
+```{r message=FALSE, warning=FALSE}
+library(randomForest) #uczenie maszynowe
+```
+
+>Deklaracja stalych globalnych
+
+```{r message=FALSE, warning=FALSE}
+move = c(0, 0, 0, 0, 0, 0, 0)
+animals = c("horse", "cow", "bdog", "pig", "sheep", "sdog", "rabbit")
+#stan stada gracza (w kolejno?ci cenowej malej?co)
+stock.status = c(0, 0, 0, 0, 0, 0, 0)
+names(stock.status) = animals
+#liczba zwierz?t w pude?ku
+max.stock = c(6, 12, 2, 20, 24, 4, 60)
+names(max.stock) = animals
+#obie kostki
+die1 = c("rabbit", "rabbit", "rabbit", "rabbit", "rabbit", "rabbit", "sheep", "sheep", "sheep", "pig", "cow", "wolf")
+die2 = c("rabbit", "rabbit", "rabbit", "rabbit", "rabbit", "rabbit", "sheep", "sheep", "pig", "pig", "horse", "fox")
+#ceny zwierzat
+prices.sorted = c(72, 36, 36, 12, 6, 6, 1)
+names(prices.sorted) = animals
+```
+
+>Mo?liwe wymiany
+
+>Funkcja rekurencyjna tworz?ca macierze wymian. Dzia?a w nast?puj?cy spos?b:  najpierw odpala si? najpierw dla najwy?szej ceny, patrzy ile najdro?szych zwierz?t jest w stanie kupi?,  nast?pnie odpala si? dla ka?dej kupionej liczby najdro?szych zwierz?t, ale ju? bez najwy?szej ceny,  a w ko?cu dochodzi do samych kr?lik?w, gdzie zwraca pre_moves, kt?re narasta?o przy wcze?niejszych odpaleniach
+
+```{r message=FALSE, warning=FALSE}
+split = function(n.rabbits, prices.sorted, pre_moves=c(), moves=c()) {
+  ratio = floor(n.rabbits/prices.sorted[1])
+  #Warunek ko?cowy
+  if(length(prices.sorted) == 1){
+    return(c(pre_moves, ratio))
+  }
+  for(i in 0:ratio){
+    #Dopisywany jest tutaj kolejny wiersz macierzy ruch?w
+    moves = rbind(moves, split(n.rabbits - i*prices.sorted[1],
+                               prices.sorted[-1],
+                               c(pre_moves, i),
+                               moves))
+  }
+  return(unique(moves))
+}
+```
+
+>Tworzenie listy zawieraj?cejnazwy zwierz?t i przypisane im macierze wszystkich wymian:
+Dla ka?dego zwierz?cia odpalana jest funkcja split, a wszystko to zapisuje si? w dw?ch listach, dzi?ki czemu tworzy si? to tylko raz dla wszytkich gier.
+
+```{r message=FALSE, warning=FALSE}
+#lista mo?liwych zamian ma?ych zwierz?t na jedno wi?ksze
+to.big.animal = list()
+#lista mo?liwych zamian du?ego zwierz?cia na mniejsze
+to.small.animals = list()
+for(i in animals){
+  to.big.animal[[i]] = -split(prices.sorted[[i]], prices.sorted)
+  to.big.animal[[i]][, which(names(prices.sorted) == i)] = 1
+  #Wyrzucanie przypadk?w, ?e wymianiamy jedno zwierz? na nic 
+  #(by?y takie gdy w funkcji split wychodzi?a np. wymiana konia na konia)
+  to.big.animal[[i]] = to.big.animal[[i]][rowSums(to.big.animal[[i]]) != 1, , drop=F]
+  to.small.animals[[i]] = -to.big.animal[[i]]
+}
+#to.big.animal wyglada teraz tak: zwierz?ta, kt?re oddajemy s? na minusie, a te, kt?re otrzymujemy na plusie
+```
+
+>Generowanie wszystkich mo?liwych ruch?w
+
+```{r message=FALSE, warning=FALSE}
+moves.generation = function(stock.status){
+  n.rabbits = sum(stock.status * prices.sorted)
+  possible.moves = c()
+  for(i in 1:length(prices.sorted)){
+    if(n.rabbits >= prices.sorted[i]){
+      possible.moves = rbind(possible.moves, to.big.animal[[names(prices.sorted[i])]])
+    }
+  }
+  if(!is.null(dim(possible.moves)) && dim(possible.moves)[1] > 0){
+    #Sprawdzanie czy mamy wystarczaj?co du?o zwierz?t w stocku, ?eby dokona? wumiany.
+    #Nie znalaz?am lepszego sposobu na dodanie stock.status do ka?dego wiersza 
+    #zamiast do ka?dej kolumny ni? transponowanie macierzy dwukrotnie
+    enough.animals = rowMeans(t(t(possible.moves) + stock.status) >= 0)
+    #Wszystkie wymiany, na kt?re nie mamy zwierz?t s? odrzucane
+    possible.moves = possible.moves[enough.animals == 1, , drop=F]
+  }
+  for(i in names(stock.status)){
+    if(stock.status[[i]] != 0){
+      possible.moves = rbind(possible.moves, to.small.animals[[i]])
+    }
+  }
+  possible.moves = unique(possible.moves)
+  if(!is.null(dim(possible.moves)) && dim(possible.moves)[1] > 0){
+    #Sprawdzenie czy ruch jest mo?liwy ze wzgl?du na liczb? zwierz?t w ca?ej grze
+    future.states = t(t(possible.moves) + stock.status)
+    #Sprawdzamy czy ?rednia wyra?e? logicznych w ka?dym rz?dzie jest r?wna 1, 
+    #bo interesuj? nas tylko te ruchy, na kt?re starczy wszystkich zwierz?t
+    possible.states = rowMeans(t(t(future.states) <= max.stock)) == 1
+    #Bierzemy tylko te ruch, kt?re s? mo?liwe ze wzgl?gu na maksymaln? liczb? zwierz?t
+    possible.moves = as.matrix(possible.moves[possible.states, ])
+    #Dorzucamy brak ruchu jako mo?liwo??
+    possible.moves = rbind(possible.moves, c(0, 0, 0, 0, 0, 0, 0))
+  }
+  return(possible.moves)
+}
+```
+
+>STRATEGIA I (Domink Ambroziak, Anna Dymowska, Adam Kr?l) [kliknij po wi?cej informacji o strategii](https://github.com/pbiecek/ProgramowanieWizualizacja/blob/master/MIMUW_2017/Projekty/Faza1/Faza1-Amb%2CDym%2CKrol.Rmd)
+
+```{r}
+strategy1.to.bigger.animal=function(stock.status,max.stock, prices.sorted,i, new.sequence){
+  
+  move[new.sequence[i]]=1
+  stock.status[new.sequence[i]]<-1
+  max.stock[new.sequence[i]]<-max.stock[new.sequence[i]]-1
+  dosplaty<-prices.sorted[new.sequence[i]]
+  j<-(i-1)
+  while(dosplaty>0){
+    if (stock.status[new.sequence[j]]>=1){#sprzedaj? zwierz?ta kolejno od najwi?kszych
+      dosplaty<-(dosplaty-prices.sorted[new.sequence[j]])
+      move[new.sequence[j]]=move[new.sequence[j]]-1
+      stock.status[new.sequence[j]]<-stock.status[new.sequence[j]]-1
+      max.stock[new.sequence[j]]<-max.stock[new.sequence[j]]+1
+    }
+    if (stock.status[new.sequence[j]]==0){
+      j<-(j-1)
+    }
+  }
+  
+  return(c(move))
+}
+```
+
+
+```{r}
+strategy1.to.smaller.animal=function(stock.status, max.stock, prices.sorted,i, new.sequence){
+  move[new.sequence[i]]=move[new.sequence[i]]-1
+  stock.status[new.sequence[i]]<-stock.status[new.sequence[i]]-1
+  max.stock[new.sequence[i]]<-max.stock[new.sequence[i]]+1
+  for (j in (i-1):1){
+    move[new.sequence[j]]=move[new.sequence[j]]+1
+    stock.status[new.sequence[j]]<-stock.status[new.sequence[j]]+1
+    max.stock[new.sequence[j]]<-max.stock[new.sequence[j]]-1
+  }
+  return(c(move))
+}
+```
+
+```{r}
+strategy1.move=function(stock.status, max.stock, prices.sorted){
+  new.sequence=c(7,5,4,2,3,1,6)
+  for (i in 6:2){
+    if (stock.status[new.sequence[i]]==0){         #sprawdzam, czy nie mam i-tego zwierz?cia
+      #sprawdzam, czy mog? kupi? i-te zwierz?
+      if((sum(stock.status[new.sequence[1:(i-1)]]*prices.sorted[new.sequence[1:(i-1)]]))>=prices.sorted[new.sequence[i]]){
+        move=strategy1.to.bigger.animal(stock.status, max.stock, prices.sorted,i, new.sequence)
+        break
+      }
+    }
+  }
+  for(i in 6:2){
+    if (stock.status[new.sequence[i]]>1){  #sprzedawanie drugiego zwierz?cia
+      if (prod(stock.status[new.sequence[i:6]])>0){
+        move=strategy1.to.smaller.animal(stock.status, max.stock, prices.sorted,i, new.sequence)
+      }
+    } 
+  }
+  return(move)
+}
+
+```
+
+>STRATEGIA II (Marianna Dzik, Piotr Radzi?ski) [kliknij po wi?cej informacji o strategii](https://github.com/pbiecek/ProgramowanieWizualizacja/blob/master/MIMUW_2017/Projekty/Faza1/Superfarmer_M_Dzik_P_Radzinski.html) 
+
+```{r warning=FALSE, message=FALSE}
+strategy2.to.bigger.animal=function(stock.status,prices.sorted,animal){
+  new.sequence2=c(7,6,5,4,2,3,1)
+  i<-which(names(stock.status[new.sequence2])==animal)
+  if((sum(stock.status[new.sequence2[1:(i-1)]]*prices.sorted[new.sequence2[1:(i-1)]]))>=prices.sorted[new.sequence2[i]]){
+    move[new.sequence2[i]]=1
+    stock.status[new.sequence2[i]]<-stock.status[new.sequence2[i]]+1
+    dosplaty<-prices.sorted[new.sequence2[i]]
+    j<-(i-1)
+    while(dosplaty>0){
+      if (stock.status[new.sequence2[j]]>=1){#sprzedaj? zwierz?ta kolejno od najwi?kszych
+        dosplaty<-(dosplaty-prices.sorted[new.sequence2[j]])
+        move[new.sequence2[j]]=move[new.sequence2[j]]-1
+        stock.status[new.sequence2[j]]<-stock.status[new.sequence2[j]]-1
+      }
+      if (stock.status[new.sequence2[j]]==0){
+        j<-(j-1)
+      }
+    }
+  }
+  return(c( move))
+}
+```
+
+```{r warning=FALSE, message=FALSE}
+#funkcja zamieniaj?co kr?liki na zwierz? animal
+strategy2.change.rabbit=function(stock.status,prices.sorted, animal){
+  move[which(names(stock.status)==animal)]=move[which(names(stock.status)==animal)]+1
+  move[which(names(stock.status)=="rabbit")]<-move[which(names(stock.status)=="rabbit")]-prices.sorted[[animal]]
+  return(c(move))
+}
+
+```
+
+```{r warning=FALSE, message=FALSE}
+strategy2.animal1.to.smaller.animal2=function(stock.status,prices.sorted,animal1, animal2){
+  move[which(names(stock.status)==animal1)]=move[which(names(stock.status)==animal1)]-1
+  move[which(names(stock.status)==animal2)]=move[which(names(stock.status)==animal2)]+(prices.sorted[[animal1]]/prices.sorted[[animal2]])
+  return(c(move))
+}
+```
+
+```{r warning=FALSE, message=FALSE}
+strategy2.change=function(stock.status,prices.sorted){
+  property=sum(stock.status*prices.sorted)
+  ruch=0
+  move=c(0,0,0,0,0,0,0)
+  if (stock.status[["horse"]]==0){
+    if(property>=72 && ruch==0){
+      move=strategy2.to.bigger.animal(stock.status,prices.sorted,"horse")
+      ruch=1
+    }else if(stock.status[["sdog"]]==0 && stock.status[["rabbit"]]>9 && ruch==0){
+      move=strategy2.change.rabbit(stock.status,prices.sorted, "sdog")
+      ruch=1
+    }else if(stock.status[["sdog"]]==1 && stock.status[["rabbit"]]>25 && ruch==0){
+      move=strategy2.change.rabbit(stock.status,prices.sorted, "sdog")
+      ruch=1
+    }else if(stock.status[["rabbit"]]<27 && stock.status[["pig"]]>0 && ruch==0){
+      move=strategy2.animal1.to.smaller.animal2(stock.status,prices.sorted, "pig","rabbit")
+      ruch=1
+    }else if(stock.status[["rabbit"]]<33 && stock.status[["sheep"]]>0 && ruch==0){
+      move=strategy2.animal1.to.smaller.animal2(stock.status,prices.sorted, "sheep","rabbit")
+      ruch=1
+    }else if(stock.status[["rabbit"]]==0 && stock.status[["sdog"]]>0 && ruch==0){
+      move=strategy2.animal1.to.smaller.animal2(stock.status,prices.sorted, "sdog","rabbit")
+      ruch=1
+    }else if(stock.status[["rabbit"]]<=45 && stock.status[["rabbit"]]>39 && stock.status[["sheep"]]<23 && ruch==0){
+      move=strategy2.change.rabbit(stock.status,prices.sorted, "sheep")
+      ruch=1
+    }else if(stock.status[["rabbit"]]>=46 && stock.status[["pig"]]<20 && ruch==0){
+      move=strategy2.change.rabbit(stock.status,prices.sorted, "pig")
+      ruch=1
+    }
+    
+  } else if(stock.status[["horse"]]==1){
+    if(property>=144 && ruch==0){
+      move=strategy2.to.bigger.animal(stock.status,prices.sorted,"horse")
+      ruch=1
+    }else if(property>=127 && ruch==0){
+      if(stock.status[["rabbit"]]==0 && stock.status[["cow"]]>1 && ruch==0){
+        move=strategy2.animal1.to.smaller.animal2(stock.status,prices.sorted,"cow", "rabbit")
+        ruch=1
+      }else if(stock.status[["sheep"]]==0 && stock.status[["cow"]]>1 && ruch==0){
+        move=strategy2.animal1.to.smaller.animal2(stock.status,prices.sorted,"cow", "sheep")
+        ruch=1
+      }else if(stock.status[["pig"]]==0 && stock.status[["cow"]]>1 && ruch==0){
+        move=strategy2.animal1.to.smaller.animal2(stock.status,prices.sorted,"cow", "pig")
+        ruch=1
+      }else if(stock.status[["rabbit"]]==0 && stock.status[["pig"]]>1 && ruch==0){
+        move=strategy2.animal1.to.smaller.animal2(stock.status,prices.sorted,"pig", "rabbit")
+        ruch=1
+      }else if(stock.status[["sheep"]]==0 && stock.status[["pig"]]>1 && ruch==0){
+        move=strategy2.animal1.to.smaller.animal2(stock.status,prices.sorted,"pig", "sheep")
+        ruch=1
+      }else if(stock.status[["rabbit"]]==0 && stock.status[["sheep"]]>1 && ruch==0){  
+        move=strategy2.animal1.to.smaller.animal2(stock.status,prices.sorted,"sheep", "rabbit")
+        ruch=1
+      }else if(stock.status[["sheep"]]==0&&stock.status[["rabbit"]]>6&& ruch==0){
+        move=strategy2.change.rabbit(stock.status,prices.sorted, "sheep")
+        ruch=1
+      }else if(stock.status[["pig"]]==0 && ruch==0){
+        move=strategy2.to.bigger.animal(stock.status,prices.sorted,"pig")
+        ruch=1
+      }else if(stock.status["cow"]==0 && ruch==0){
+        move=strategy2.to.bigger.animal(stock.status,prices.sorted,"cow")
+        ruch=1
+      }
+    }else if(property<127 && ruch==0){
+      if(stock.status[["sdog"]]==0 && stock.status[["rabbit"]]>9 && ruch==0){
+        move=strategy2.change.rabbit(stock.status,prices.sorted, "sdog")
+        ruch=1
+      }else if(stock.status[["rabbit"]]==0 && stock.status[["sdog"]]>0 && ruch==0){
+        move=strategy2.animal1.to.smaller.animal2(stock.status,prices.sorted, "sdog","rabbit")
+        ruch=1
+      }else if(stock.status[["sheep"]]==0 && stock.status[["rabbit"]]>15 && ruch==0){
+        move=strategy2.change.rabbit(stock.status,prices.sorted, "sheep")
+        ruch=1
+      }else if(stock.status[["sheep"]]>0 && stock.status[["rabbit"]]>20 && stock.status[["pig"]]==0 &&ruch==0){
+        move=strategy2.change.rabbit(stock.status,prices.sorted, "pig")
+        ruch=1
+      }
+    }
+  }else if(stock.status[["horse"]]>1 && ruch==0){
+    move[which(names(stock.status)=="horse")]=move[which(names(stock.status)=="horse")]-1
+    move[which(names(stock.status)=="cow")]=move[which(names(stock.status)=="cow")]+1
+    move[which(names(stock.status)=="pig")]=move[which(names(stock.status)=="pig")]+2
+    move[which(names(stock.status)=="sheep")]=move[which(names(stock.status)=="sheep")]+1
+    if(stock.status[["rabbit"]]<54){
+      move[which(names(stock.status)=="rabbit")]=move[which(names(stock.status)=="rabbit")]+6
+    }else{
+      move[which(names(stock.status)=="sheep")]=move[which(names(stock.status)=="sheep")]+1
+    }
+    ruch=1
+  }
+  return(c(move))
+}
+```
+
+>Spos?b wybrania ruchu
+
+```{r message=FALSE, warning=FALSE}
+choose.move = function(way, possible.moves, model = NULL, stock.status){
+  max.stock = c(6, 12, 2, 20, 24, 4, 60)
+  if(way == "random"){
+    #Losowy wyb?r ruchu
+    number.moves = nrow(possible.moves)
+    move = possible.moves[sample(1:number.moves, 1), ]
+    return(move)
+  } else if(way == "rf") {
+    #Wyb?r w oparciu o model random forest
+    df1 = matrix(stock.status, nrow = nrow(possible.moves), ncol = 7, byrow = T)
+    df1 = cbind(df1, possible.moves)
+    
+    n.types.after = rowSums((df1[, 1:7] + df1[, 8:14])[, c(1, 2, 4, 5, 7)] > 0)
+    n.types.before = rowSums((df1[, 1:7])[, c(1, 2, 4, 5, 7)] > 0)
+    #(Dorzucamy te same kolumny co w funkcji "forest.training.and.results", 
+    #?eby random forest mia? tyle samo zmiennych)
+    #?eby modelowi ?atwiej by?o si? uczy? oraz przewidywa? dorzucamy kolumny m?wi?ce 
+    #ile rodzaj?w zwierz?t potrzebnych do wygranej mieli?my, 
+    #ile b?dziemy mie? po ruchu i jaka jest r??nica
+    df1 = cbind(df1, n.types.before)
+    df1 = cbind(df1, n.types.after)
+    df1 = cbind(df1, (n.types.after - n.types.before))
+    colnames(df1) = c("X1", "X2", "X3", "X4", "X5", "X6", "X7", "X8", "X9", 
+                      "X10", "X11", "X12", "X13", "X14", "X16", "X17", "X18")
+    pred = predict(model, df1)
+    #Bierzemy ruch, kt?ry otrzyma? od naszego modelu najmniejsz? przewidywan? liczb? ruch?w do wygranej 
+    which.move = sample(which(pred == min(pred)), 1)
+    #Jako, ?e czasami wyst?puj? dwa ruchy o tej samej predykcji, to bierzemy losowy z nich
+    move = possible.moves[which.move, ]
+    return(move)
+  } else if (way == "strategy1") {
+    max.stock1=max.stock-stock.status
+    names(max.stock1) = animals
+    move=strategy1.move(stock.status, max.stock1, prices.sorted)
+    return(move)
+  }else if(way=="strategy2") {
+    move=strategy2.change(stock.status, prices.sorted)
+    return(move)
+  }
+}
+```
+
+>Powi?kszanie stada po rzucie
+
+```{r message=FALSE, warning=FALSE}
+reproduction = function(die1.result, die2.result, stock.status,max.stock){
+  if(die1.result == die2.result){
+    stock.status[[die1.result]] = min(floor(stock.status[[die1.result]] + (stock.status[[die1.result]]+2)/2), max.stock[[die1.result]])
+  } else if(die1.result == "wolf" && die2.result == "fox"){
+    if(stock.status[["bdog"]] == 0){
+      stock.status[["rabbit"]] = 0
+      stock.status[["sheep"]] = 0
+      stock.status[["pig"]] = 0
+      stock.status[["cow"]] = 0
+    } else {
+      stock.status[["bdog"]] = stock.status[["bdog"]] - 1
+    }
+    if(stock.status[["sdog"]] == 0){
+      stock.status[["rabbit"]] = 0
+    } else {
+      stock.status[["sdog"]] = stock.status[["sdog"]] - 1
+    }
+  } else if(die1.result == "wolf"){
+    if(stock.status[["bdog"]] == 0){
+      stock.status[["rabbit"]] = 0
+      stock.status[["sheep"]] = 0
+      stock.status[["pig"]] = 0
+      stock.status[["cow"]] = 0
+    } else {
+      stock.status[["bdog"]] = stock.status[["bdog"]] - 1
+    } 
+    stock.status[[die2.result]] = min(floor(stock.status[[die2.result]] + (stock.status[[die2.result]]+1)/2), max.stock[[die2.result]])
+    
+  } else if(die2.result == "fox"){
+    if(stock.status[["sdog"]] == 0){
+      stock.status[["rabbit"]] = 0
+    } else {
+      stock.status[["sdog"]] = stock.status[["sdog"]] - 1
+    }
+    stock.status[[die1.result]] = min(floor(stock.status[[die1.result]] + (stock.status[[die1.result]]+1)/2), max.stock[[die1.result]])
+  } else {
+    stock.status[[die1.result]] = min(floor(stock.status[[die1.result]] + (stock.status[[die1.result]]+1)/2), max.stock[[die1.result]])
+    stock.status[[die2.result]] = min(floor(stock.status[[die2.result]] + (stock.status[[die2.result]]+1)/2), max.stock[[die2.result]])
+  }
+  return(stock.status)
+}
+```
+
+>Funkcja zmieniaj?ca stan stada
+
+```{r message=FALSE, warning=FALSE}
+change = function(move, stock.status){
+  stock.status + move
+}
+```
+
+>Funkcja sprawdzaj?ca, czy zosta? spe?niony warunek wygranej (Gracz ma conajmniej jedno zwierz? z ka?dego gatunku)
+
+```{r message=FALSE, warning=FALSE}
+win = function(stock.status){
+  min(stock.status[c(1, 2, 4, 5, 7)]) > 0
+}
+```
+
+>Pojedyncza gra
+
+```{r message=FALSE, warning=FALSE}
+play = function(nrows = 0, way, model = NULL, save.moves = T){
+  turns = 0
+  tmp.data = matrix(data=NA, nrow=1000, ncol=14)
+  while(!win(stock.status)){
+    turns = turns + 1
+    nrows = nrows +1
+    # main code for play
+    possible.moves = moves.generation(stock.status)
+    if(!is.null(dim(possible.moves)) && dim(possible.moves)[1] > 0){
+      move = choose.move(way, possible.moves, model, stock.status)
+      if(save.moves){
+        tmp.data[turns, ] = c(stock.status, move)
+      }
+      stock.status = change(move, stock.status)
+    }
+    # check if win after move
+    if(win(stock.status)){
+      #turns.to.end = turns:1
+      #one.generation[(nrows - turns + 1):nrows, ] <<- cbind(tmp.data[1:turns, ], turns.to.end)
+      return(list(nrows, turns, tmp.data))
+    }
+    # roll dice (why not at the beginning of the move?)
+    die1.result = sample(die1, 1)
+    die2.result = sample(die2, 1)
+    stock.status = reproduction(die1.result, die2.result, stock.status,max.stock)
+  }
+  #turns.to.end = turns:1
+  #one.generation[(nrows - turns + 1):nrows, 15] <<- turns.to.end
+  return(list(nrows, turns, tmp.data))
+}
+
+```
+
+>Generowanie danych do uczenia maszynowego
+
+```{r message=FALSE, warning=FALSE}
+generate.data = function(way, model = NULL, max.nrows = 5e4){
+  one.generation = data.frame(matrix(NA, nrow = max.nrows, ncol = 15))
+  results = c()
+  nrows = 0
+  for(i in 1:1e5){
+    if(nrows >= max.nrows){
+      return(list(results, one.generation[complete.cases(one.generation), ]))
+    }
+    play.data = play(nrows, way, model)
+    nrows = play.data[[1]]
+    results[i] = play.data[[2]]
+    turns = results[i]
+    tmp.data = play.data[[3]]
+    turns.to.end = turns:1
+    one.generation[(nrows - turns + 1):nrows, ] <- cbind(tmp.data[1:turns, ], turns.to.end)
+    cat(turns, " ")
+  }
+  return(list(results, one.generation[complete.cases(one.generation), ]))
+}
+```
+
+>Funkcja trenuj?ca model oraz generuj?ca ostateczne wyniki
+
+```{r message=FALSE, warning=FALSE}
+forest.training.and.results = function(){
+  forest.results = list()
+  random.data = generate.data(way="random")
+  random.result = random.data[[1]]
+  random.data.to.learn = random.data[[2]]
+  strategy1.data = generate.data(way="strategy1")
+  strategy1.result = strategy1.data[[1]]
+  strategy1.data.to.learn = strategy1.data[[2]]
+  strategy2.data = generate.data(way="strategy2")
+  strategy2.result = strategy2.data[[1]]
+  strategy2.data.to.learn = strategy2.data[[2]]
+  data = rbind(random.data.to.learn, strategy1.data.to.learn, strategy2.data.to.learn)
+  
+  for(i in 1:40){
+    n.types.after = rowSums((data[, 1:7] + data[, 8:14])[, c(1, 2, 4, 5, 7)] > 0)
+    n.types.before = rowSums((data[, 1:7])[, c(1, 2, 4, 5, 7)] > 0)
+    data$X16 = n.types.before
+    data$X17 = n.types.after
+    data$X18 = n.types.after - n.types.before
+    rf1 = randomForest(as.matrix(data[, -15]), data[, 15], ntree=25, mtry=17)
+    forest.data = generate.data(way = "rf", rf1)
+    forest.results[[i]] = forest.data[[1]]
+    data = forest.data[[2]]
+  }
+  return(forest.results)
+}
+
+```
+
