@@ -7,6 +7,10 @@ https://goo.gl/forms/Dlz9HaV9DqrWLcds1
 Materialy na start
 Pogromcy Danych: http://pogromcydanych.icm.edu.pl
 
+Z XKCD o jakości kodu.
+
+![XKCD](http://imgs.xkcd.com/comics/code_quality.png)
+
 Plan spotkań MIM UW:
 ----------------
 
@@ -14,7 +18,7 @@ Plan spotkań MIM UW:
 * 13 X - Zajęcia się nie odbędą [eRum]
 * 20 X - Instrukcje sterujące, pętle, funkcje, [Wykład](https://github.com/pbiecek/ProgramowanieWizualizacja/blob/master/MIMUW_2017/wyklad002.Rmd), [lub rozdział o pętlach](http://biecek.pl/R)
 * 27 X - [Projekt 1/1]; Funkcje ++, listy i przetwarzanie potokowe [Wykład](https://github.com/pbiecek/ProgramowanieWizualizacja/blob/master/MIMUW_2017/wyklad003.Rmd), [lub rozdział o funkcjach](http://biecek.pl/R)
-* 3 XI - Budowa pakietu
+* 3 XI - Budowa pakietu [materiały](http://pbiecek.github.io/Przewodnik/Programowanie/pakiety/po_co.html)
 * 10 XI - [Projekt 1/2]; Unit testy 
 * 17 XI - Debugowanie
 * 24 XI - Profilowanie kodu

@@ -1,0 +1,56 @@
+---
+title: "Przemysław Dycha"
+author: "dycha_lab02_11"
+date: "8 listopada 2016"
+output: html_document
+---
+```{r}
+llibrary(PogromcyDanych)
+library(dplyr)
+
+
+
+marki <- "Kia"
+rodzaje_paliw <- "benzyna"
+modele <- "Carens"
+
+model_marki <- function(marka= marki, paliwo = rodzaje_paliw){
+  auta <- filter(auta2012, Marka %in% marka,Rodzaj.paliwa %in% paliwo,Rok.produkcji >2000)
+  marki_modelu<-  unique(auta$Model)
+  marki_modelu<-as.character(marki_modelu)
+}
+modele<- model_marki()
+
+
+
+utrata_wartosci <- function(marka="Kia",model="Carens",paliwo="benzyna"){
+  stopifnot(!is.na(model))
+  stopifnot(!is.na(marka))
+  stopifnot(!is.na(paliwo))
+  auta2012 <- filter(auta2012,Rok.produkcji >2000)
+  auta<- auta2012 %>% filter( Marka %in% marka,Model %in% model, Rodzaj.paliwa %in% paliwo)
+  auta<- auta%>% group_by(Rok.produkcji) %>% summarise(sr_cena = mean(Cena.w.PLN)) 
+
+  sr_cena1 <-auta$sr_cena[-1]
+  sr_cena2 <-auta$sr_cena[-length(auta$sr_cena)]
+
+  przyrost_cen <- mean(sr_cena1/sr_cena2)
+  przyrost_cen
+
+}
+
+## Funkcja liczy śr przyrost dla modeli danej marki
+
+sr_przyrost_modeli <- function(model = modele){
+
+modele1<- as.list(model)
+
+
+lapply(modele1,  function(x) {
+  utrata_wartosci(marka= marki,model = x, paliwo = rodzaje_paliw)
+  
+} )
+
+}
+```
+
