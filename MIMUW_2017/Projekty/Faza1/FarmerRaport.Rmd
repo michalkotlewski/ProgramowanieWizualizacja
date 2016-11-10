@@ -1,0 +1,257 @@
+---
+title: "FarmerRaport"
+author: "Michal Kotlewski"
+date: "November 10, 2016"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Parametry Gry Zadane Na Poczatku
+Zadajemy kostki,poczatkowy stan zwierzat w banku i w zagrodzie, oraz ceny zwierzat.
+
+```{r parametry}
+stanBankuZwierzat<-c(krolik=60,owca=24,swinia=20,krowa=12,
+                     kon=6,malyPies=4,duzyPies=2)
+kostkaZielona<-c("wilk","krowa","swinia","owca","owca","owca",
+                 "krolik","krolik","krolik","krolik","krolik","krolik")
+kostkaCzerwona<-c("lis","kon","swinia","swinia","owca","owca",
+                  "krolik","krolik","krolik","krolik","krolik","krolik")
+stanZagrody<-c(krolik=0,owca=0,swinia=0,krowa=0,
+               kon=0,malyPies=0,duzyPies=0)
+gatunkiZwierzatWZagrodzie<-c("krolik","owca","swinia","krowa","kon","malyPies","duzyPies")
+cenyZwierzat<-c(krolik=1,owca=6,swinia=12,krowa=36,
+                kon=72,malyPies=6,duzyPies=36)
+
+stanGry<-list(stanZagrody=stanZagrody,stanBankuZwierzat=stanBankuZwierzat)
+```
+
+# Glówna Funkcja Gry
+```{r glownaFunkcjaGry}
+rozegrajGre<-function(stanGry){
+  liczbaTur<-0
+  while(czyWygrana(stanGry)==0){
+    stanGry<-ruchGracza(stanGry)
+    liczbaTur<-liczbaTur+1
+  }
+  return(liczbaTur)
+}
+
+```
+
+# Funkcje zwiazane z mechanika:
+
+###Rzucanie koscmi
+```{r 1.1}
+rzucKoscmi <- function() {
+  wartoscNaKostceZielonej <- sample(kostkaZielona, 1)
+  wartoscNaKostceCzerwonej <- sample(kostkaCzerwona, 1)
+  return(c(wartoscNaKostceZielonej, wartoscNaKostceCzerwonej))
+}
+```
+
+###Dodawanie zwierzat do zagrody po rzucie koscmi
+
+```{r 2}
+dodajZwierzetaDoZagrody<-function(stanGry,wynikiRzutuKoscmi){
+  for(zwierze in gatunkiZwierzatWZagrodzie){
+    if(wynikiRzutuKoscmi[1]==zwierze|wynikiRzutuKoscmi[2]==zwierze){
+      if(wynikiRzutuKoscmi[1]==zwierze & wynikiRzutuKoscmi[2]==zwierze){
+        liczbaZwierzatDoDodania<-floor((stanGry[["stanZagrody"]][zwierze]+2)/2)
+      }
+      else{
+        liczbaZwierzatDoDodania<-floor((stanGry[["stanZagrody"]][zwierze]+1)/2)
+      }
+      
+      if(stanGry[["stanBankuZwierzat"]][zwierze]<liczbaZwierzatDoDodania){
+        stanGry[["stanZagrody"]][zwierze]<-stanGry[["stanZagrody"]][zwierze]+stanGry[["stanBankuZwierzat"]][zwierze]
+        stanGry[["stanBankuZwierzat"]][zwierze]<-0
+      } 
+      else{
+        stanGry[["stanZagrody"]][zwierze]<-stanGry[["stanZagrody"]][zwierze]+liczbaZwierzatDoDodania
+        stanGry[["stanBankuZwierzat"]][zwierze]<-stanGry[["stanBankuZwierzat"]][zwierze]-liczbaZwierzatDoDodania
+      }
+      
+    }
+  }
+  return(stanGry)
+}
+```
+
+
+
+### Funkcje opisujace wplyw wilka... 
+```{r 3}
+wyliczStanGryPoAtakuWilka <- function(stanGry){
+  if( stanGry[["stanZagrody"]]["duzyPies"]==0){
+    for(zwierze in gatunkiZwierzatWZagrodzie){
+      if(zwierze!="kon"&zwierze!="malyPies"){
+        stanGry[["stanBankuZwierzat"]][zwierze] <-
+          stanGry[["stanBankuZwierzat"]][zwierze] + stanGry[["stanZagrody"]][zwierze]
+        stanGry[["stanZagrody"]][zwierze]<-0
+      }
+    }
+  }
+  else{
+    stanGry[["stanBankuZwierzat"]]["duzyPies"]<-stanGry[["stanBankuZwierzat"]]["duzyPies"]+1
+    stanGry[["stanZagrody"]]["duzyPies"]<-stanGry[["stanZagrody"]]["duzyPies"]-1
+  }
+  return(stanGry)
+}
+```
+
+###  i lisa
+
+```{r 4}
+wyliczStanGryPoAtakuLisa<-function(stanGry){
+  if( stanGry[["stanZagrody"]]["malyPies"]==0){
+    stanGry[["stanBankuZwierzat"]]["krolik"] <-
+      stanGry[["stanBankuZwierzat"]]["krolik"] + stanGry[["stanZagrody"]]["krolik"]
+    stanGry[["stanZagrody"]]["krolik"]<-0
+  }
+  else{
+    stanGry[["stanBankuZwierzat"]]["malyPies"]<-stanGry[["stanBankuZwierzat"]]["malyPies"]+1
+    stanGry[["stanZagrody"]]["malyPies"]<-stanGry[["stanZagrody"]]["malyPies"]-1
+  }
+  return(stanGry)
+}
+
+```
+
+
+### Wyliczanie stanu gry po wykonaniu rzutu koscmi
+
+```{r 5}
+wyliczStanGryPoRzucieKoscmi<-function(stanGry){
+  (wynikiRzutuKoscmi<-rzucKoscmi())
+  #print(wynikiRzutuKoscmi)
+  (stanGry<-dodajZwierzetaDoZagrody(stanGry,wynikiRzutuKoscmi))
+  if(wynikiRzutuKoscmi[1]=="wilk"){
+    stanGry<-wyliczStanGryPoAtakuWilka(stanGry)
+  }
+  #print(stanGry)
+  if(wynikiRzutuKoscmi[2]=="lis"){
+    (stanGry<-wyliczStanGryPoAtakuLisa(stanGry))
+  }
+  return(stanGry)
+}
+
+```
+
+### Funkcja opisujaca ruch gracza - uwzglednia proces wymieniania zwierzat i rzut koscmi
+```{r 6}
+ruchGracza<-function(stanGry){
+  stanGry<-wymieniajZwierzetaZgodnieZeStrategia1(stanGry)
+  stanGry<-wyliczStanGryPoRzucieKoscmi(stanGry)
+  return(stanGry)
+}
+```
+
+
+###Sprawdzanie, czy gracz wygral gre
+```{r 7}
+czyWygrana <- function(stanGry) {
+  if (stanGry[["stanZagrody"]]["krolik"] > 1 &
+      stanGry[["stanZagrody"]]["owca"] > 1 &
+      stanGry[["stanZagrody"]]["swinia"] > 1 &
+      stanGry[["stanZagrody"]]["krowa"] > 1 &
+      stanGry[["stanZagrody"]]["kon"] > 1) 
+  {
+    return (1)
+  }
+  else
+  {
+    return (0)
+  }
+}
+```
+
+
+
+
+#Funkcje zwiazane ze strategia:
+
+###Sprawdzamy ile kosztuje zwierze w walucie bedacej zwierzetami innego gatunku
+```{r 8}
+
+sprawdzCene <-
+  function(zwierzeDrozsze, zwierzeTansze) {
+    ###dla rownych cen kolejnosc dowolna
+    return(unname(cenyZwierzat[zwierzeDrozsze] / cenyZwierzat[zwierzeTansze]))
+  }
+
+
+
+```
+
+
+
+### Funkcje opisujace proces kupna i sprzedarzy zwierzat
+
+```{r 9}
+kupZwierze<-function(stanGry,zwierzeDoKupienia,zwierzeDoSprzedania){
+  liczba<-sprawdzCene(zwierzeDoKupienia,zwierzeDoSprzedania)
+  stanGry[["stanZagrody"]][zwierzeDoKupienia]<-stanGry[["stanZagrody"]][zwierzeDoKupienia]+1
+  stanGry[["stanBankuZwierzat"]][zwierzeDoKupienia]<-stanGry[["stanBankuZwierzat"]][zwierzeDoKupienia]-1
+  stanGry[["stanZagrody"]][zwierzeDoSprzedania]<-stanGry[["stanZagrody"]][zwierzeDoSprzedania]-liczba
+  stanGry[["stanBankuZwierzat"]][zwierzeDoSprzedania]<-stanGry[["stanBankuZwierzat"]][zwierzeDoSprzedania]+liczba
+  return(stanGry)
+}
+
+sprzedajZwierze<-function(stanGry,zwierzeDoSprzedania,zwierzeDoKupienia){
+  liczba<-sprawdzCene(zwierzeDoSprzedania,zwierzeDoKupienia)
+  stanGry[["stanZagrody"]][zwierzeDoSprzedania]<-stanGry[["stanZagrody"]][zwierzeDoSprzedania]-1
+  stanGry[["stanBankuZwierzat"]][zwierzeDoSprzedania]<-stanGry[["stanBankuZwierzat"]][zwierzeDoSprzedania]+1
+  stanGry[["stanZagrody"]][zwierzeDoKupienia]<-stanGry[["stanZagrody"]][zwierzeDoKupienia]+liczba
+  stanGry[["stanBankuZwierzat"]][zwierzeDoKupienia]<-stanGry[["stanBankuZwierzat"]][zwierzeDoKupienia]-liczba
+  return(stanGry)
+}
+```
+
+
+
+###Strategia gracza
+```{r 10}
+wymieniajZwierzetaZgodnieZeStrategia1 <- function(stanGry) {
+  i = 0
+  if (stanGry[["stanZagrody"]]["krowa"] > 2 &
+      i == 0 & stanGry[["stanBankuZwierzat"]]["kon"] > 1) {
+    stanGry <- kupZwierze(stanGry, "kon", "krowa")
+    i <- 1
+  }
+  if (stanGry[["stanZagrody"]]["swinia"] > 3 &
+      i == 0 & stanGry[["stanBankuZwierzat"]]["krowa"] > 1) {
+    stanGry <- kupZwierze(stanGry, "krowa", "swinia")
+    i <- 1
+  }
+  if (stanGry[["stanZagrody"]]["owca"] > 2 &
+      i == 0 & stanGry[["stanBankuZwierzat"]]["swinia"] > 1) {
+    stanGry <- kupZwierze(stanGry, "swinia", "owca")
+    i <- 1
+  }
+  if (stanGry[["stanZagrody"]]["krolik"] > 6 &
+      i == 0 & stanGry[["stanBankuZwierzat"]]["owca"] > 1) {
+    stanGry <- kupZwierze(stanGry, "owca", "krolik")
+    i <- 1
+  }
+  return(stanGry)
+}
+
+```
+
+
+#Symulujemy 10000 gier
+
+
+
+
+
+```{r pressure}
+wektorCzasowGry<- replicate(10000, rozegrajGre(stanGry))
+hist(wektorCzasowGry,xlab="Czasy gry")
+mean(wektorCzasowGry)
+median(wektorCzasowGry)
+```
+
