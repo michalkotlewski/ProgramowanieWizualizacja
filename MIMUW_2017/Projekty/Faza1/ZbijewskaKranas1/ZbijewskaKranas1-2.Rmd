@@ -1,0 +1,387 @@
+---
+title: "SuperFarmer"
+author: "[Hanna Kranas](https://github.com/hansiu), [Joanna Zbijewska](https://github.com/joannazbijewska)"
+date: "21 pazdziernika 2016"
+output:
+  html_document:
+    toc: true
+    depth: 3
+    number_sections: true
+    theme: united
+    highlight: tango
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+```{r global_options, include=FALSE}
+knitr::opts_chunk$set(warning=FALSE,message =FALSE)
+```
+```{r load_packages, include=FALSE}
+library(ggplot2)
+library('dplyr')
+library('testthat')
+```
+#**Definicje niezbednych wartosci**  
+##Stada
+```{r stada-tworzenie, include=FALSE}
+nazwy <- c('krolik','owca','swinia','krowa','kon','maly_pies','duzy_pies')
+stado_glowne <- c(60,24,20,12,6,4,2)
+stado <- c(0,0,0,0,0,0,0)
+names(stado_glowne) <- nazwy
+names(stado) <- nazwy
+```
+```{r stada-przyklad}
+stado
+stado_glowne
+```
+##Kostki
+```{r kostki-tworzenie, include=FALSE}
+kostka_zielona <- c('krolik','krolik','krolik','krolik','krolik','krolik','owca','owca','owca','swinia','krowa','wilk')
+kostka_czerwona <- c('krolik','krolik','krolik','krolik','krolik','krolik','owca','owca','swinia','swinia','kon','lis')
+```
+```{r kostki-przyklad}
+kostka_zielona
+kostka_czerwona
+```
+#**Funkcje pomocnicze**  
+##Funkcja liczaca ile otrzymamy ze stada glownego, z tego co nam sie nalezy
+```{r licz-tworzenie}
+daj_ze_stada_glownego_ile_sie_da <- function(tyle_chce_wziac,stado,stado_glowne){
+  tyle_chce_wziac <- ifelse(tyle_chce_wziac <= stado_glowne, tyle_chce_wziac, stado_glowne)
+  return(tyle_chce_wziac)
+}
+```
+```{r licz-przyklad}
+tyle_chce_wziac <- c(1,25,0,0,0,5,0)
+daj_ze_stada_glownego_ile_sie_da(tyle_chce_wziac,stado,stado_glowne)
+```
+```{r licz-test}
+otrzymane <- daj_ze_stada_glownego_ile_sie_da(tyle_chce_wziac,stado,stado_glowne)
+expect_equivalent(otrzymane,(c(1,24,0,0,0,4,0)))
+```
+##Funkcja wykonujaca czynnosc przekazywania zwierzat miedzy stadem a stadem glownym
+```{r stanstad-tworzenie}
+dodaj_lub_odejmij_zwierzeta <- function(co, jak='+',stado,stado_glowne){
+  if (jak=='+'){ # dodajemy do stada
+    stado <- stado + co
+    stado_glowne <- stado_glowne - co
+  } else { # odejmujemy ze stada
+    stado <- stado - co
+    stado_glowne <- stado_glowne + co
+  }
+  return(list(Stado=stado,Glowne=stado_glowne))
+}
+```
+```{r stanstad-przyklad}
+co <- daj_ze_stada_glownego_ile_sie_da(tyle_chce_wziac,stado,stado_glowne)
+NoweStany <- dodaj_lub_odejmij_zwierzeta(co,'+',stado,stado_glowne)
+NoweStany
+stado <- NoweStany$Stado
+stado_glowne <- NoweStany$Glowne
+```
+```{r stanstad-test}
+expect_is(NoweStany,"list")
+```
+##Funkcja sprawdzajaca czy stac nas na wygrana i zakanczajaca gre
+```{r zakoncz-tworzenie}
+zakoncz_gre_jak_starcza <- function(stado){
+  if(all(stado >= c(0,0,0,0,2,0,0)) | all(stado >= c(0,0,0,2,1,0,0)) | all(stado >= c(0,0,2,1,1,0,0)) | all(stado >= c(0,2,1,1,1,0,0)) | all(stado >= c(0,0,0,1,1,0,1)) | all(stado >= c(0,1,1,1,1,1,0)) | all(stado >= c(1,1,1,1,1,0,0))){
+    return(TRUE)
+  } else {
+    return(FALSE)
+  }
+}
+```
+```{r zakoncz-przyklad}
+zakoncz_gre_jak_starcza(stado)
+```
+```{r zakoncz-test}
+a <- zakoncz_gre_jak_starcza(stado)
+expect_false(a)
+```
+##Funkcja wyluskujaca wartosci wektora z zapisu w postaci napisu
+```{r wektor_z_napisu}
+zrob_wektor_z_napisu <- function(co_zmienic){
+  do_zamiany <- as.character(co_zmienic)
+  as.numeric(unlist(strsplit(do_zamiany,',')))
+}
+```
+```{r wektor_z_napisu-test}
+co_zmienic <- "0,0,0,0,1,0,1"
+x <- zrob_wektor_z_napisu(co_zmienic)
+expect_is(x,"numeric")
+expect_equivalent(x,(c(0,0,0,0,1,0,1)))
+```
+#**Ramka danych do wymian**   
+## Tworzenie ramki danych
+```{r dane_do_wymian,results="hide",include=FALSE}
+##To bedzie pierwsza kolumna naszej ramki danych - co chcemy wymieniac
+co <- c("krolik","krolik","krolik","krolik","krolik","owca","owca","owca","owca","owca","owca","swinia","swinia","swinia","swinia","swinia","swinia","swinia","swinia","swinia","krowa","krowa","krowa","krowa","krowa","krowa","krowa","krowa","krowa","krowa","krowa","krowa","krowa","krowa","maly_pies","maly_pies","maly_pies","duzy_pies","duzy_pies","duzy_pies","duzy_pies","duzy_pies","duzy_pies","duzy_pies","duzy_pies","duzy_pies","duzy_pies","duzy_pies","duzy_pies","duzy_pies","duzy_pies","kon","kon","kon","kon","kon","kon","kon","kon","kon","kon","kon","kon","kon","kon","kon","kon","kon","kon","kon","kon","kon","kon","kon","kon","kon","kon","kon","kon","kon","kon","kon")
+##To bedzie druga kolumna naszej ramki danych - na co chcemy wymieniac
+na_co <- c("owca","swinia","krowa","maly_pies","duzy_pies","krolik","swinia","krowa","kon","maly_pies","duzy_pies","krolik","owca","krowa","kon","maly_pies","duzy_pies","owca+krolik","owca+maly_pies","maly_pies+krolik","krolik","owca","swinia","kon","duzy_pies","krolik+owca","krolik+owca+swinia","krolik+swinia","krolik+owca+maly_pies","krolik+swinia+maly_pies","swinia+owca","swinia+maly_pies","swinia+owca+maly_pies","swinia+owca+maly_pies+krolik","krolik","owca","swinia","krolik","owca","swinia","krowa","kon","krolik+owca","krolik+owca+swinia","krolik+swinia","krolik+owca+maly_pies","krolik+swinia+maly_pies","swinia+owca","swinia+maly_pies","swinia+owca+maly_pies","swinia+owca+maly_pies+krolik","owca","swinia","krowa","duzy_pies","krowa+duzy_pies","krowa+swinia","krowa+swinia+owca","krowa+swinia+maly_pies","krowa+swinia+owca+maly_pies","krowa+krolik","krowa+swinia+krolik","krowa+swinia+owca+krolik","krowa+swinia+maly_pies+krolik","swinia+owca","swinia+maly_pies","swinia+owca+maly_pies","swinia+owca+maly_pies+krolik","swinia+maly_pies+krolik","swinia+owca+krolik","owca+maly_pies","owca+krolik","owca+maly_pies+krolik","maly_pies+krolik","duzy_pies+swinia","duzy_pies+swinia+owca","duzy_pies+swinia+maly_pies","duzy_pies+swinia+owca+maly_pies","duzy_pies+krolik","duzy_pies+swinia+krolik","duzy_pies+swinia+owca+krolik","duzy_pies+swinia+maly_pies+krolik")
+##To beda wektory, ktore trzeba bedzie odejmowac ze stada - trzecia kolumna danych.
+za_ile <- c("6,0,0,0,0,0,0","12,0,0,0,0,0,0","36,0,0,0,0,0,0","6,0,0,0,0,0,0","36,0,0,0,0,0,0","0,1,0,0,0,0,0","0,2,0,0,0,0,0","0,6,0,0,0,0,0","0,12,0,0,0,0,0","0,1,0,0,0,0,0","0,6,0,0,0,0,0","0,0,1,0,0,0,0","0,0,1,0,0,0,0","0,0,3,0,0,0,0","0,0,6,0,0,0,0","0,0,1,0,0,0,0","0,0,3,0,0,0,0","0,0,1,0,0,0,0","0,0,1,0,0,0,0","0,0,1,0,0,0,0","0,0,0,1,0,0,0","0,0,0,1,0,0,0","0,0,0,1,0,0,0","0,0,0,2,0,0,0","0,0,0,1,0,0,0","0,0,0,1,0,0,0","0,0,0,1,0,0,0","0,0,0,1,0,0,0","0,0,0,1,0,0,0","0,0,0,1,0,0,0","0,0,0,1,0,0,0","0,0,0,1,0,0,0","0,0,0,1,0,0,0","0,0,0,1,0,0,0","0,0,0,0,0,1,0","0,0,0,0,0,1,0","0,0,0,0,0,2,0","0,0,0,0,0,0,1","0,0,0,0,0,0,1","0,0,0,0,0,0,1","0,0,0,0,0,0,1","0,0,0,0,0,0,2","0,0,0,0,0,0,1","0,0,0,0,0,0,1","0,0,0,0,0,0,1","0,0,0,0,0,0,1","0,0,0,0,0,0,1","0,0,0,0,0,0,1","0,0,0,0,0,0,1","0,0,0,0,0,0,1","0,0,0,0,0,0,1","0,0,0,0,1,0,0","0,0,0,0,1,0,0","0,0,0,0,1,0,0","0,0,0,0,1,0,0","0,0,0,0,1,0,0","0,0,0,0,1,0,0","0,0,0,0,1,0,0","0,0,0,0,1,0,0","0,0,0,0,1,0,0","0,0,0,0,1,0,0","0,0,0,0,1,0,0","0,0,0,0,1,0,0","0,0,0,0,1,0,0","0,0,0,0,1,0,0","0,0,0,0,1,0,0","0,0,0,0,1,0,0","0,0,0,0,1,0,0","0,0,0,0,1,0,0","0,0,0,0,1,0,0","0,0,0,0,1,0,0","0,0,0,0,1,0,0","0,0,0,0,1,0,0","0,0,0,0,1,0,0","0,0,0,0,1,0,0","0,0,0,0,1,0,0","0,0,0,0,1,0,0","0,0,0,0,1,0,0","0,0,0,0,1,0,0","0,0,0,0,1,0,0","0,0,0,0,1,0,0","0,0,0,0,1,0,0")
+##To bedzie ostatnia kolumna ramki danych - wektory z otrzymanymi zwierzetami.
+co_z_tego <- c("0,1,0,0,0,0,0","0,0,1,0,0,0,0","0,0,0,1,0,0,0","0,0,0,0,0,1,0","0,0,0,0,0,0,1","6,0,0,0,0,0,0","0,0,1,0,0,0,0","0,0,0,1,0,0,0","0,0,0,0,1,0,0","0,0,0,0,0,1,0","0,0,0,0,0,0,1","12,0,0,0,0,0,0","0,2,0,0,0,0,0","0,0,0,1,0,0,0","0,0,0,0,1,0,0","0,0,0,0,0,2,0","0,0,0,0,0,0,1","6,1,0,0,0,0,0","0,1,0,0,0,1,0","6,0,0,0,0,1,0","36,0,0,0,0,0,0","0,6,0,0,0,0,0","0,0,3,0,0,0,0","0,0,0,0,1,0,0","0,0,0,0,0,0,1","30,1,0,0,0,0,0","18,1,1,0,0,0,0","24,0,1,0,0,0,0","24,1,0,0,0,1,0","18,0,1,0,0,1,0","0,2,2,0,0,0,0","0,0,2,0,0,2,0","0,1,2,0,0,1,0","12,1,1,0,0,1,0","6,0,0,0,0,0,0","0,1,0,0,0,0,0","0,0,1,0,0,0,0","36,0,0,0,0,0,0","0,6,0,0,0,0,0","0,0,3,0,0,0,0","0,0,0,1,0,0,0","0,0,0,0,1,0,0","30,1,0,0,0,0,0","18,1,1,0,0,0,0","24,0,1,0,0,0,0","24,1,0,0,0,1,0","18,0,1,0,0,1,0","0,2,2,0,0,0,0","0,0,2,0,0,2,0","0,1,2,0,0,1,0","12,1,1,0,0,1,0","0,12,0,0,0,0,0","0,0,6,0,0,0,0","0,0,0,2,0,0,0","0,0,0,0,0,0,2","0,0,0,1,0,0,1","0,0,3,1,0,0,0","0,4,1,1,0,0,0","0,0,2,1,0,2,0","0,3,1,1,0,1,0","36,0,0,1,0,0,0","24,0,1,1,0,0,0","18,1,1,1,0,0,0","18,0,1,1,0,1,0","0,6,3,0,0,0,0","0,0,4,0,0,4,0","0,5,3,0,0,1,0","24,5,1,0,0,1,0","48,0,1,0,0,1,0","42,2,1,0,0,0,0","0,11,0,0,0,1,0","36,6,0,0,0,0,0","36,5,0,0,0,1,0","60,0,0,0,0,2,0","0,0,3,0,0,0,1","0,4,1,0,0,0,1","0,0,2,0,0,2,1","0,3,1,0,0,1,1","36,0,0,0,0,0,1","24,0,1,0,0,0,1","18,1,1,0,0,0,1","18,0,1,0,0,1,1")
+```
+## Ramka sklada sie z 4 kolumn i 82 wierszy odpowiadajacych roznym sposobom wymiany zwierzat
+```{r dane_wymian}
+dane_wymian <- data.frame(co,na_co,za_ile,co_z_tego)
+colnames(dane_wymian) = c("Co","Na_co","Za_ile","Co_z_tego")
+head(dane_wymian,12)
+```
+```{r dane_wymian-teste}
+expect_is(dane_wymian,"data.frame")
+expect_equal((ncol(dane_wymian)),4)
+```
+#**Funkcje wymiany**  
+##Funkcja sprawdzajaca czy jest juz mozliwe wziecie konia
+```{r kon-tworzenie}
+wez_konia_jak_starcza <- function(stado,stado_glowne){
+  konik <- filter(dane_wymian, Co=="kon")
+  x <- as.numeric(as.character(count(konik)))
+  #dla kazdej mozliwej wymiany zawartej w naszym data.frame sprawdzamy, czy nas stac
+  for(i in 1:x){
+    if((all(stado >= zrob_wektor_z_napisu(konik[i,"Co_z_tego"]))) & (all(stado_glowne >= zrob_wektor_z_napisu(konik[i,"Za_ile"])))){
+      NoweStany <- dodaj_lub_odejmij_zwierzeta(zrob_wektor_z_napisu(konik[i,"Co_z_tego"]),'-',stado,stado_glowne)
+      NoweStany <- dodaj_lub_odejmij_zwierzeta(zrob_wektor_z_napisu(konik[i,"Za_ile"]),'+',NoweStany$Stado,NoweStany$Glowne)
+      stado <- NoweStany$Stado
+      stado_glowne <- NoweStany$Glowne
+      break #bo bierzemy tylko z jednej mozliwosci
+    }
+  }
+  return(list(Stado=stado,Glowne=stado_glowne))
+}
+```
+```{r kon-przyklad}
+NoweStany <- wez_konia_jak_starcza(stado, stado_glowne)
+NoweStany
+stado <- NoweStany$Stado
+stado_glowne <- NoweStany$Glowne
+```
+```{r kon-test}
+expect_error(wez_konia_jak_starcza(stado))
+```
+##Funkcja korzystajac z przygotowanej ramki danych dokonuje wymiany, jezeli ilosc zwierzat w stadzie i stadzie glownym jest wystarczajaca
+```{r wymiana-tworzenie}
+#przyjmuje wartosci z - jakie zwierze chcemy wymienic oraz na - na jakie zwirzaki chcemy wymienic (jesli wiecej niz jedno nalezy wpisac je z "+" pomiedzy)
+wymiana <- function(z,na,stado,stado_glowne){
+  #filtruje nasza ramke danych najpierw ze wzgledu na zwierze wymieniane, pozniej ze   wzgledu na wybrane zwierzeta, ktore chcemy uzyskac
+  wymieniany_zwierzak <- filter(dane_wymian, Co %in% z)
+  nasza_wymiana <- filter(wymieniany_zwierzak, Na_co %in% na)
+  #uzyskanie z ramki danych wartosci wektorow zaplaty i uzyskanych zwierzat
+  zaplata <- zrob_wektor_z_napisu(nasza_wymiana$Za_ile)
+  uzysk <- zrob_wektor_z_napisu(nasza_wymiana$Co_z_tego)
+  #sprawdzenie czy nas stac i czy mozna wziac ze stada glownego
+  if(all(stado >= zaplata) & all(stado_glowne >= uzysk)){
+    #dodaje i odejmuje odpowiednie wartosci ze stada i stada glownego
+    NoweStany <- dodaj_lub_odejmij_zwierzeta(zaplata,'-',stado,stado_glowne)
+    NoweStany <- dodaj_lub_odejmij_zwierzeta(uzysk,'+',NoweStany$Stado,NoweStany$Glowne)
+    stado <- NoweStany$Stado
+    stado_glowne <- NoweStany$Glowne
+  }
+  return(list(Stado=stado,Glowne=stado_glowne))
+}
+```
+```{r wymiana-przyklad}
+NoweStany <- wymiana('swinia','kon',stado,stado_glowne)
+NoweStany
+stado <- NoweStany$Stado
+stado_glowne <- NoweStany$Glowne
+```
+```{r wymiana-test}
+expect_error(wymiana('kon',stado,stado_glowne))
+```
+#**Funkcje rzutow**  
+##Rzut kostkami
+```{r losowanie-tworzenie}
+losuj_rzut_kostek <- function(a=kostka_zielona,b=kostka_czerwona){
+  wynik <- c(sample(a, 1), sample(b, 1))
+  return(wynik)
+}
+```
+```{r losowanie-przyklad}
+k <- losuj_rzut_kostek()
+cat(k)
+```
+##Zamiana wyniku rzutu na wektor
+```{r zamiana-tworzenie}
+zamien_wynik_rzutu_na_wektor <- function(wynik){
+  c1 <- switch(wynik[1], # wynik z pierwszej kosci
+               krolik=c(1,0,0,0,0,0,0),
+               owca=c(0,1,0,0,0,0,0),
+               swinia=c(0,0,1,0,0,0,0),
+               krowa=c(0,0,0,1,0,0,0),
+               c(0,0,0,0,0,0,0)
+  )
+  c2 <- switch(wynik[2], # wynik z drugiej kosci
+               krolik=c(1,0,0,0,0,0,0),
+               owca=c(0,1,0,0,0,0,0),
+               swinia=c(0,0,1,0,0,0,0),
+               kon=c(0,0,0,0,1,0,0),
+               c(0,0,0,0,0,0,0)
+  )
+  z_rzutu <- (c1+c2)
+  return(z_rzutu)
+}
+```
+```{r zamiana-przyklad}
+zamien_wynik_rzutu_na_wektor(k)
+```
+```{r zamiana-test}
+y <- zamien_wynik_rzutu_na_wektor(k)
+expect_is(y,"numeric")
+```
+##Przeprowadzenie atakow drapieznikow
+```{r atak-tworzenie}
+atak_drapieznika <- function(lis = FALSE, wilk = FALSE,stado,stado_glowne){
+  NoweStany <- list(Stado=stado,Glowne=stado_glowne)
+  if (wilk == TRUE ){
+    if (NoweStany$Stado['duzy_pies']>0){
+      #ucieka duzy pies
+      NoweStany <- dodaj_lub_odejmij_zwierzeta(c(0,0,0,0,0,0,1),'-',NoweStany$Stado,NoweStany$Glowne)
+    } else {
+      # wszystko oprocz koni i psow ucieka
+      NoweStany <- dodaj_lub_odejmij_zwierzeta(c(NoweStany$Stado[1:4],0,0,0),'-',NoweStany$Stado,NoweStany$Glowne)
+    }
+  }
+  if (lis == TRUE ){
+    if (NoweStany$Stado['maly_pies']>0){
+      #ucieka maly pies
+      NoweStany <- dodaj_lub_odejmij_zwierzeta(c(0,0,0,0,0,1,0),'-',NoweStany$Stado,NoweStany$Glowne)
+    } else {
+      # wszystkie kroliki uciekaja
+      NoweStany <- dodaj_lub_odejmij_zwierzeta(c(NoweStany$Stado['krolik'],0,0,0,0,0,0),'-',NoweStany$Stado,NoweStany$Glowne)
+      
+    }
+  }
+  stado <- NoweStany$Stado
+  stado_glowne <- NoweStany$Glowne
+  return(list(Stado=stado,Glowne=stado_glowne))
+}
+```
+```{r atak-przyklad}
+stado
+NoweStany <- atak_drapieznika(FALSE,TRUE,stado,stado_glowne)
+stado <- NoweStany$Stado
+stado_glowne <- NoweStany$Glowne
+NoweStany
+```
+##Dokonywanie rzutu i akcji z nim zwiazanych
+```{r rzucanie - tworzenie}
+rzuc_i_zareaguj <- function(stado, stado_glowne){
+  NoweStany <- list(Stado=stado,Glowne=stado_glowne)
+  otrzymane<-c(0,0,0,0,0,0,0)
+  kostki<-losuj_rzut_kostek()
+  if ('wilk' %in% kostki){
+    if ('lis' %in% kostki) {
+      NoweStany <-atak_drapieznika(TRUE,TRUE,NoweStany$Stado,NoweStany$Glowne)
+    } else {
+      NoweStany <- atak_drapieznika(FALSE,TRUE,NoweStany$Stado,NoweStany$Glowne)
+    }
+  } else {
+    if ('lis' %in% kostki) {
+      NoweStany <- atak_drapieznika(TRUE,FALSE,NoweStany$Stado,NoweStany$Glowne)
+    }
+  }
+  stado <- NoweStany$Stado
+  stado_glowne <- NoweStany$Glowne
+  #czy w rzucie rozmnozylo sie jakies zwierze?
+  wylosowane <- zamien_wynik_rzutu_na_wektor(kostki)
+  otrzymane <- ifelse(wylosowane == 0, 0, trunc((stado+wylosowane)/2))
+  otrzymane <- daj_ze_stada_glownego_ile_sie_da(otrzymane,stado,stado_glowne)
+  if (!all(otrzymane==0)){
+    NoweStany <- dodaj_lub_odejmij_zwierzeta(otrzymane,'+',stado,stado_glowne)
+    stado <- NoweStany$Stado
+    stado_glowne <- NoweStany$Glowne
+  }
+  return(list(Stado=stado,Glowne=stado_glowne))
+}
+```
+```{r rzucanie-przyklad}
+NoweStany <- rzuc_i_zareaguj(stado, stado_glowne)
+NoweStany
+stado <- NoweStany$Stado
+stado_glowne <- NoweStany$Glowne
+```
+#**Przeprowadzenie calej gry**
+```{r zagraj-tworzenie}
+zagraj <- function(Strategia=NULL) {
+  nazwy <- c('krolik','owca','swinia','krowa','kon','maly_pies','duzy_pies')
+  stado_glowne <- c(60, 24, 20, 12, 6, 4, 2)
+  stado <- c(0, 0, 0, 0, 0, 0, 0)
+  names(stado_glowne) <- nazwy
+  names(stado) <- nazwy
+  kroki = 0
+  repeat {
+    if(!is.null(Strategia)){
+      NoweStany <- Strategia(stado,stado_glowne)
+      stado <- NoweStany$Stado
+      stado_glowne <- NoweStany$Glowne
+    }
+    NoweStany <- rzuc_i_zareaguj(stado, stado_glowne)
+    stado <- NoweStany$Stado
+    stado_glowne <- NoweStany$Glowne
+    kroki <- kroki + 1
+    if (zakoncz_gre_jak_starcza(stado) == TRUE) {
+      return(kroki)
+    }
+  }
+}
+```
+#**Strategia**  
+```{r strategia}
+nasza_strategia_1 <- function(stado,stado_glowne){
+  NoweStany <- list(Stado=stado,Glowne=stado_glowne)
+  if (!all(NoweStany$Stado == 0)) {
+    NoweStany <- wez_konia_jak_starcza(NoweStany$Stado, NoweStany$Glowne)
+    for (i in rev(which(NoweStany$Glowne[1:4]==0))){
+      #jak juz mamy pelno - wymieniamy na wyzsze
+      NoweStany <- wymiana(names(NoweStany$Glowne[i]),names(NoweStany$Glowne[i+1]), NoweStany$Stado, NoweStany$Glowne)
+    }
+    if (NoweStany$Stado['krolik'] > 6) {
+      if ((NoweStany$Stado['maly_pies'] == 0) &
+          (NoweStany$Stado['krolik'] >= 9)) {
+        NoweStany <-
+          wymiana('krolik', 'maly_pies', NoweStany$Stado, NoweStany$Glowne)
+      }
+      if (NoweStany$Stado['owca'] > 0) {
+        NoweStany <- wymiana('krolik', 'owca', NoweStany$Stado, NoweStany$Glowne)
+      }
+    } else {
+      if ((NoweStany$Stado['owca'] > 2) &
+          (NoweStany$Stado['krolik'] == 0)) {
+        NoweStany <-
+          wymiana('owca', 'maly_pies', NoweStany$Stado, NoweStany$Glowne)
+      }
+      if ((NoweStany$Stado['swinia'] > 0) &
+          (NoweStany$Stado['maly_pies'] == 0)) {
+        NoweStany <- wymiana('swinia', 'owca+maly_pies', NoweStany$Stado, NoweStany$Glowne)
+        
+      }
+    }
+  }
+  stado <- NoweStany$Stado
+  stado_glowne <- NoweStany$Glowne
+  return(list(Stado=stado,Glowne=stado_glowne))
+}
+```
+```{r zagraj-przyklad}
+zagraj(nasza_strategia_1)
+```
+
+#**Czas gry**
+```{r echo=FALSE}
+wyniki <- as.data.frame(replicate(10000,zagraj(nasza_strategia_1)))
+summary(wyniki) 
+ggplot(data=wyniki, aes(wyniki)) + geom_histogram(binwidth = 1,
+                                                  col="blue", 
+                                                  fill="green") + 
+  labs(title="Rozklad czasu gry") +
+  labs(x="Czas gry [kroki]", y="Liczba gier")
+
+```
+```{r wyniki-test}
+expect_equal((nrow(wyniki)),10000)
+```

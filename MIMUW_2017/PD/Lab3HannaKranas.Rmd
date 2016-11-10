@@ -1,0 +1,46 @@
+---
+title: "Lab3"
+author: "Hanna Kranas"
+date: "3 listopada 2016"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(PogromcyDanych)
+library(dplyr)
+##head(auta2012)
+
+statystyki_ceny <-
+function(MarkaWozu = NA,
+ModelWozu = NULL ,
+Lata = NULL) {
+if (is.na(MarkaWozu)) {
+MarkaWozu <- (unique(auta2012$Marka))
+}
+if (is.null(ModelWozu)) {
+ModelWozu <- unique(auta2012$Model)
+}
+if (is.null(Lata)) {
+Lata <- unique(auta2012$Rok.produkcji)
+}
+auta <-
+subset(auta2012, select = c(Marka, Model, Rok.produkcji, Cena.w.PLN))
+SamochodyDanegoModelu <-
+filter(auta,
+Marka %in% MarkaWozu,
+Model %in% ModelWozu,
+Rok.produkcji %in% Lata)
+PoLatach <- group_by(SamochodyDanegoModelu,Marka,Model,Rok.produkcji)
+return(summarise(PoLatach, Srednia.Cena = mean(Cena.w.PLN)))
+}
+statystyki_ceny('Ford')
+```
+```{r}
+utrata_ceny <- function(Marka){
+  
+}
+```
