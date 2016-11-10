@@ -1,0 +1,420 @@
+---
+title: "Symulacja gry Superfarmer"
+author: "Przemysław Dycha,  Mateusz Siwiec"
+date: "10 listopada 2016"
+output:
+  html_document:
+    depth: 3
+    number_sections: yes
+    theme: flatly
+    toc: yes
+  pdf_document:
+    toc: yes
+---
+
+
+# Wprowadzenie - zadeklarowanie  zmiennych
+
+```{r echo=FALSE, warning=FALSE, message=FALSE}
+# Wymagane pakiety do wyświetlenia histogramu oraz średniego czasu gry.
+library(plotly)
+library(pander)
+
+```
+
+
+```{r  warning=FALSE, message=FALSE}
+rm(list = ls())
+ROUNDS = 10000
+
+rows = c("rabbit","small_dog","sheep","pig","big_dog","cow","horse")
+columns = c("value", "max.count", "win.condition", "count")
+
+value         = c( 1, 6,  6, 12, 36, 36, 72)
+max.count     = c(60, 4, 24, 20,  2,  6,  6)
+win.condition = c( 1, 0,  1,  1,  0,  1,  1)
+count         = c( 0, 0,  0,  0,  0,  0,  0)
+
+game = cbind(value, max.count, win.condition, count)
+colnames(game) = columns
+rownames(game) = rows
+
+die1 = c("wolf",   "cow", "pig", "sheep", "sheep", "sheep", "rabbit", "rabbit", "rabbit", "rabbit", "rabbit", "rabbit")
+die2 = c( "fox", "horse", "pig",   "pig", "sheep", "sheep", "rabbit", "rabbit", "rabbit", "rabbit", "rabbit", "rabbit")
+
+```
+
+# Opis słowny strategii
+
+Założenia naszej strategii:
+
+- Wymian na zwierzęta różne od konia dokonujemy tylko za pomocą królików. 
+
+- Nie wymieniamy królików na zwierzęta które już posiadamy w stadzie.
+
+- Staramy się posiadać zawsze jednego królika. 
+
+- Zwierzęta różne od królików staramy się trzymać tylko po 1 sztuce. W sytuacji gdy możemy wymienić na króliki i liczba królików nie przekroczy maksymalnej liczby dokonujemy wymiany.
+
+- Wymianę na konia dokonujemy  poprzez utratę krowy i dużego psa  lub oddanie 12 królików, małego psa, owcy, świni i dużego psa.
+
+- Grę kończy zdobycie konia nr 2, którego w fazie wymian wymieniamy na pozostałe zwierzęta.
+
+# Funkcje pomocnicze
+
+Funkcja change.count() zmienia nam liczbę danego zwierzęcia w stadzie.
+
+```{r warning=FALSE, message=FALSE}
+change.count <- function(game, animal, change) {
+  
+  change = change + game[animal, "count"]
+  change = max(c(0, change))
+  change = min(c(change, game[animal,"max.count"]))
+  game[animal, "count"] = change
+  game
+}
+
+```
+
+
+Funkcja exchange.farm() zmienia liczebność wskazanego podzbioru stada.
+Skraca zapis kodu w sytuacji gdy potrzebujemy użyć kilkakrotnie funkcji change.count().
+
+```{r}
+exchange.farm <- function(game, farm, count){
+  for (animal in farm){
+    game<-change.count(game, animal, count)
+  }
+  game
+}
+
+```
+
+Funkcja get.value() zwraca wartość danego zwierzęcia.
+
+```{r warning=FALSE, message=FALSE}
+get.value <- function(game, animal) {
+  
+  game[animal, "value"]
+}
+```
+Funkcja get.count() zwraca liczbę zwierząt danego gatunku, posiadanych w stadzie.
+
+```{r warning=FALSE, message=FALSE}
+get.count <- function(game, animal) {
+  game[animal, "count"]
+}
+```
+Funkcja clear.count() zeruje liczbę zwierząt danego gatunku.
+
+```{r warning=FALSE, message=FALSE}
+clear.count <- function(game, animal) {
+  
+  change.count(game, animal, -game[animal, "max.count"])
+  game
+}
+
+```
+Funkcja game.finished() sprawdza, czy warunek końca rozgrywki jest spełniony.
+
+```{r warning=FALSE, message=FALSE}
+game.finished <- function(game) {
+  
+  all(game[,"count"] >= game[,"win.condition"])
+}
+```
+
+# Funkcje generujące strategię
+
+## Funkcja exchange.two.animals()
+
+Funkcja exchange.two.animals zamienia zwierzę 1 na zwierzę nr 2.
+
+Parametry:
+
+- game :  tabela gry
+- animal1: zwierzę które chcemy zamienić
+- animal2: zwierzę które chcemy dostać
+- animal1count: liczba zwierząt które zamieniamy
+- animal2count: liczba zwierząt które powinniśmy dostać jeśli nie przekroczyliśmy limitu
+
+
+```{r warning=FALSE, message=FALSE}
+
+exchange.two.animals <- function(game, animal1, animal2, animal1count, animal2count ){
+
+  game <- change.count(game, animal1, -animal1count)
+  game <- change.count(game, animal2, animal2count)
+  game
+}
+
+
+```
+
+## Funkcja exchange.animals.for.rabbits()
+
+Funkcja exchange.animals.for.rabbits() zamienia zwierzęta na króliki.
+
+W przypadku gdy mamy więcej niż jedno zwierze innego gatunku niż króliki zamienia "nadmiarowe" zwierzęta na króliki.
+
+W przypadku gdy nie mamy królików: bierze zwierzę o największej wartości (poza koniem) jakie posiadamy i zamienia je na króliki.
+
+Parametry:
+
+- game: tabela gry
+- farm:  wektor zwierząt bez konia
+
+
+
+```{r message=FALSE , warning=FALSE}
+
+exchange.animals.for.rabbits <- function(game, farm = c("small_dog","sheep","pig","big_dog","cow")) {
+
+  if (get.count(game,"rabbit")>0){
+
+    for(animal in rev(farm)) {
+      
+      if(get.count(game,animal) > 1 &&
+        (get.count(game,"rabbit") + get.value(game,animal) < 60)) {
+
+        game <- exchange.two.animals(game, animal, "rabbit", 1, get.value(game, animal))
+      }
+    }
+  } else {
+    for(animal in rev(farm)) {
+
+      if(get.count(game,animal)>0 & get.count(game, animal = "rabbit")==0 ) {
+      
+        game <- exchange.two.animals(game,animal, "rabbit", 1, get.value(game, animal))
+      }
+    }
+  }
+
+  game
+}
+```
+
+## Funkcja exchange.rabbits.for.animals()
+
+Funkcja exchange.rabbits.for.animals() zamienia króliki na zwierzęta.
+
+Działanie: Jeśli nie mamy zwierzęcia a możemy go otrzymać z królików to zamieniamy.
+
+Parametry: gra oraz podzbiór farmy.
+
+
+```{r warning=FALSE, message=FALSE}
+
+
+exchange.rabbits.for.animals <- function(game, farm =c("small_dog","sheep","pig", "big_dog","cow")){
+  for(animal in farm){
+    if(get.count(game,animal)==0 & get.value(game,animal)<get.count(game,"rabbit")){
+      game <- exchange.two.animals(game,"rabbit",animal,get.value(game,animal), 1)
+    }
+  }
+  game
+}
+
+
+```
+
+
+## Funkcja get.horse()
+
+Funkcja get.horse() sprawdza czy możemy zamienić zwierzęta na konia.
+
+Sposób wymiany :
+
+- poświęcenie 12 królików, małego psa, owcy, świni i dużego psa
+- poświęcenie krowy i dużego psa
+
+```{r}
+
+get.horse <- function(game){
+  
+  if (all(game[,"count"] > c(12, 0, 0, 0, 0, -1, -1))) {
+    game <- exchange.farm(game, c("small_dog", "sheep", "pig", "big_dog"), -1)
+    game <- change.count(game, "horse", 1)
+    game <- change.count(game, "rabbit", -12)
+  }
+  if(get.count(game, "cow") > 0 & get.count(game, "big_dog") > 0) {
+    game <- exchange.farm(game, c("cow","big_dog"), -1)
+    game <- change.count(game, "horse", 1)
+  }
+  
+  game
+}
+
+```
+
+## Funkcja exchange.horse()
+
+Funkcja exchange.horse() sprawdza czy mamy więcej niż jednego konia, jeśli tak zamienia konia na pozostałe zwierzęta.
+
+Parametry wejściowe: tabela game
+
+Wyjście: tabela game
+
+
+```{r  warning=FALSE, message=FALSE}
+
+exchange.horse <- function(game){
+  
+  if (get.count(game,"horse") > 1){
+  
+    game <- exchange.farm(game, c("cow","pig","sheep","rabbit"), 1)
+    game <- change.count(game, "horse", -1)
+ 
+  } 
+  game
+}
+
+```
+
+
+## Końcowa funkcja wymian
+
+Faza wymian składa się z 4 etapów - wywołań wsześniej zdefiniowanych funkcji.
+
+
+```{r warning=FALSE, message=FALSE}
+
+exchange.animals <- function(game) {
+  
+  game <- exchange.animals.for.rabbits(game)
+  game <- exchange.rabbits.for.animals(game)
+  game <- get.horse(game)  
+  game <- exchange.horse(game)
+
+  game
+}
+```
+
+
+# Funkcję symulujące rzut kostką i dodanie zwierząt przy rzucie kostką
+
+
+## Funkcja multiply.animals()
+
+Funkcja multiply.animals() dodaje zwierzęta do stada po wykonaniu rzutu kostką.
+
+```{r warning=FALSE, message=FALSE}
+
+
+multiply.animals <- function(game, animal1, animal2) {
+  
+  if (animal1 == animal2)
+    game = change.count(game, animal1, (get.count(game, animal1) + 2) %/% 2)
+  else {
+    if (animal1 %in% row.names(game))
+      game = change.count(game, animal1, (get.count(game, animal1) + 1) %/% 2)
+    
+    if (animal2 %in% row.names(game))
+      game = change.count(game, animal2, (get.count(game, animal2) + 1) %/% 2)
+  }
+  
+  game
+}
+
+```
+
+
+## Funkcja throw.dice()
+
+Funkcja throw.dice() wykonuje symulacje jednorazowego rzutu kostką.
+
+```{r warning=FALSE, message=FALSE}
+throw.dice <- function(game, die1, die2) {
+
+  result1 = sample(die1, 1)
+  result2 = sample(die2, 1)
+  
+  if (result1 == "wolf") 
+    if (get.count(game, "big_dog") > 0)
+      game = change.count(game, "big_dog", -1)
+    else 
+      for (animal in row.names(game)) 
+        if (animal != "horse")
+          game = clear.count(game, animal)
+
+  if (result2 == "fox")
+    if (get.count(game, "small_dog") > 0)
+      game = change.count(game, "small_dog", -1)
+    else
+      game = clear.count(game, "rabbit")
+  
+  game = multiply.animals(game, result1, result2)
+
+  game
+}
+
+```
+
+# Funkcje generujące grę
+
+## Funkcja make.move()
+
+Funkcja make.move() symuluje jeden ruch w grze.
+
+```{r warning=FALSE,message=FALSE}
+
+make.move <- function(game, die1, die2) {
+  
+  game <- exchange.animals(game)
+  
+  if (!game.finished(game))
+    game <- throw.dice(game, die1, die2)
+    
+  game
+}
+
+```
+
+## Funkcja play() symulująca całą grę
+
+Funkcja play() symuluje całą grę i zlicza liczbę rund.
+
+```{r warning=FALSE,message=FALSE}
+
+play <- function(game, die1, die2) {
+  
+  current.round = 1
+  while (!game.finished(game)) {
+    game <- make.move(game, die1, die2)
+    current.round = current.round + 1
+  }
+
+  current.round
+}
+
+```
+
+
+# Końcowe rezultaty
+
+## Histogram
+
+```{r,   message=FALSE}
+results = 1:ROUNDS
+for (i in 1:ROUNDS) {
+  results[i] = play(game, die1, die2)
+}
+
+
+```
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+#library(plotly)
+plot_ly(x = results, type = "histogram")%>%
+layout(title = "Histogram czasu gry",
+       xaxis = list(title = "Liczba rund"),
+       yaxis = list(title = "Liczba wystąpień"))
+```
+
+
+## Średnia liczba rund
+
+```{r echo=FALSE}
+#library(pander)
+pander(mean(results))
+```
