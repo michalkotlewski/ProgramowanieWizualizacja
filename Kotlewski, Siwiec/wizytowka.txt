@@ -1,0 +1,2 @@
+Funkcja do tworzenia wizytówek- rysuj_wizytowke jest w pakiecie "SuperFarmerDA":
+https://github.com/michalkotlewski/rKurs-projekt3/tree/master/SuperFarmerAGOJZB
